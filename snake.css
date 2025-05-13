@@ -1,0 +1,153 @@
+body {
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    overflow: hidden; /* 防止滚动条出现 */
+}
+
+.container {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    width: 90%;
+    max-width: 600px;
+}
+
+header h1 {
+    font-size: 2.8em;
+    margin-bottom: 10px;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.score-board {
+    font-size: 1.2em;
+    margin-bottom: 20px;
+    background-color: rgba(0,0,0,0.2);
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.game-board-container {
+    position: relative; /* 用于覆盖层定位 */
+    width: 100%;
+    /* 高度会由JS根据canvas调整，或者可以设置一个固定的比例 */
+    margin: 0 auto;
+    border: 5px solid rgba(255,255,255,0.3);
+    border-radius: 10px;
+    overflow: hidden; /* 保证canvas在容器内 */
+}
+
+canvas#game-board {
+    display: block; /* 移除canvas下方的空隙 */
+    background-color: #2c3e50; /* 深色背景以突出蛇和食物 */
+    /* 宽度和高度将由JS设置 */
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.overlay h2 {
+    font-size: 2.5em;
+    margin-bottom: 15px;
+}
+
+.overlay p {
+    font-size: 1.1em;
+    margin-bottom: 20px;
+}
+
+.overlay button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.overlay button:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+}
+
+.difficulty-selector {
+    margin-top: 20px;
+}
+
+.difficulty-selector label {
+    margin-right: 10px;
+    font-size: 1em;
+}
+
+.difficulty-selector select {
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 1em;
+    background-color: #fff;
+    color: #333;
+}
+
+.controls {
+    margin-top: 25px;
+    font-size: 0.9em;
+    color: rgba(255,255,255,0.8);
+}
+
+.controls p {
+    margin: 5px 0;
+}
+
+footer {
+    margin-top: 30px;
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.7);
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+    .container {
+        padding: 20px;
+        width: 95%;
+    }
+    header h1 {
+        font-size: 2em;
+    }
+    .score-board {
+        font-size: 1em;
+    }
+    .overlay h2 {
+        font-size: 2em;
+    }
+    .overlay p {
+        font-size: 1em;
+    }
+    .overlay button {
+        padding: 12px 25px;
+        font-size: 1em;
+    }
+} 
