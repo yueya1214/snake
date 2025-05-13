@@ -10,50 +10,144 @@ const startButton = document.getElementById('start-button');
 const restartButton = document.getElementById('restart-button');
 const difficultySelect = document.getElementById('difficulty');
 
-// 移动端控制按钮
 const btnUp = document.getElementById('btn-up');
 const btnDown = document.getElementById('btn-down');
 const btnLeft = document.getElementById('btn-left');
 const btnRight = document.getElementById('btn-right');
 
-// 游戏板尺寸
-const boardSize = 20; // 网格数量
-let tileSize; // 每个格子的大小，将动态计算
-
-// 游戏状态
+const boardSize = 20;
+let tileSize;
 let snake;
 let food;
-let bonusFood = null; // 奖励食物
-let obstacles = []; // 障碍物
-let dx; // x方向速度
-let dy; // y方向速度
+let bonusFood = null;
+let obstacles = [];
+let dx;
+let dy;
 let score;
 let highScore = localStorage.getItem('snakeHighScore') || 0;
 highScoreDisplay.textContent = highScore;
-let gameLoopInterval;
 let gameSpeed;
 let isPaused = false;
-let changingDirection = false; // 防止快速连续改变方向导致蛇头反向
+let changingDirection = false;
 let bonusFoodTimer;
-const BONUS_FOOD_DURATION = 8000; // 奖励食物持续时间 (8秒)
+const BONUS_FOOD_DURATION = 8000;
 const BONUS_FOOD_SCORE = 5;
 const OBSTACLE_COUNT = 5;
 
-// 音效 (占位符 - 您需要提供真实的音频文件并取消注释)
-const eatSound = { play: () => console.log('Play eat sound') }; // new Audio('sounds/eat.mp3');
-const gameOverSound = { play: () => console.log('Play game over sound') }; // new Audio('sounds/gameOver.mp3');
-const bonusEatSound = { play: () => console.log('Play bonus eat sound')}; // new Audio('sounds/bonus.mp3');
+const eatSound = { play: () => console.log('Play eat sound') };
+const gameOverSound = { play: () => console.log('Play game over sound') };
+const bonusEatSound = { play: () => console.log('Play bonus eat sound') };
+
+const offscreenCanvas = document.createElement('canvas');
+const offscreenCtx = offscreenCanvas.getContext('2d');
+const eyeCanvas = document.createElement('canvas');
+const eyeCtx = eyeCanvas.getContext('2d');
+
+let lastTime = 0;
+let blinkOpacity = 0.3;
+let lastBlinkUpdate = 0;
+let frameCount = 0;
+let fps = 0;
+let lastFpsUpdate = 0;
 
 function resizeCanvas() {
     const containerWidth = gameBoard.parentElement.clientWidth;
     tileSize = Math.floor(containerWidth / boardSize);
     gameBoard.width = tileSize * boardSize;
     gameBoard.height = tileSize * boardSize;
+    offscreenCanvas.width = gameBoard.width;
+    offscreenCanvas.height = gameBoard.height;
+    eyeCanvas.width = tileSize;
+    eyeCanvas.height = tileSize;
+    drawStaticElements();
     if (snake) {
-        drawGame();
+        drawGame(performance.now());
     }
 }
 window.addEventListener('resize', resizeCanvas);
+
+function drawStaticElements() {
+    offscreenCtx.fillStyle = '#2c3e50';
+    offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+    obstacles.forEach(obs => {
+        drawRect(obs.x, obs.y, '#8e44ad', 'obstacle', false, offscreenCtx);
+    });
+}
+
+function drawEyes() {
+    eyeCtx.clearRect(0, 0, tileSize, tileSize);
+    eyeCtx.fillStyle = 'white';
+    const eyeRadius = tileSize / 8;
+    const eyeOffsetX = dx !== 0 ? tileSize / (dx > 0 ? 3 : 1.5) : tileSize / 2.5;
+    const eyeOffsetY = dy !== 0 ? tileSize / (dy > 0 ? 3 : 1.5) : tileSize / 2.5;
+    eyeCtx.beginPath();
+    eyeCtx.arc(eyeOffsetX, eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
+    eyeCtx.arc(dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX, 
+               dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY, 
+               eyeRadius, 0, 2 * Math.PI);
+    eyeCtx.fill();
+
+    eyeCtx.fillStyle = 'black';
+    const pupilRadius = eyeRadius / 2;
+    eyeCtx.beginPath();
+    eyeCtx.arc(eyeOffsetX + dx * pupilRadius, eyeOffsetY + dy * pupilRadius, pupilRadius, 0, 2 * Math.PI);
+    eyeCtx.arc((dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX) + dx * pupilRadius, 
+               (dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY) + dy * pupilRadius, 
+               pupilRadius, 0, 2 * Math.PI);
+    eyeCtx.fill();
+}
+
+function drawRect(x, y, color, type = 'snake', isHead = false, context = ctx) {
+    context.fillStyle = color;
+    const posX = x * tileSize;
+    const posY = y * tileSize;
+
+    if (type === 'normal' || type === 'bonus') {
+        const radius = tileSize / 2;
+        context.beginPath();
+        context.arc(posX + radius, posY + radius, radius * (type === 'bonus' ? 0.9 : 0.8), 0, 2 * Math.PI);
+        context.fill();
+        context.fillStyle = type === 'bonus' ? `rgba(255, 255, 255, ${blinkOpacity})` : 'rgba(255,255,255,0.3)';
+        context.beginPath();
+        context.arc(posX + radius * 0.7, posY + radius * 0.7, radius * 0.3, 0, 2 * Math.PI);
+        context.fill();
+    } else if (type === 'obstacle') {
+        context.fillRect(posX, posY, tileSize, tileSize);
+        context.strokeStyle = '#5D3D76';
+        context.lineWidth = 2;
+        context.strokeRect(posX + 1, posY + 1, tileSize - 2, tileSize - 2);
+    } else {
+        context.fillRect(posX, posY, tileSize - 1, tileSize - 1);
+        context.fillStyle = 'rgba(255,255,255,0.1)';
+        context.fillRect(posX, posY, tileSize - 1, 2);
+        context.fillStyle = 'rgba(0,0,0,0.1)';
+        context.fillRect(posX, posY + tileSize - 3, tileSize - 1, 2);
+
+        if (isHead) {
+            drawEyes();
+            context.drawImage(eyeCanvas, posX, posY);
+        }
+    }
+}
+
+function drawGame(timestamp) {
+    ctx.drawImage(offscreenCanvas, 0, 0);
+
+    if (timestamp - lastBlinkUpdate > 200) {
+        blinkOpacity = Math.abs(Math.sin(timestamp / 200)) * 0.5 + 0.3;
+        lastBlinkUpdate = timestamp;
+    }
+
+    drawRect(food.x, food.y, '#e74c3c', 'normal');
+    if (bonusFood) {
+        drawRect(bonusFood.x, bonusFood.y, '#f1c40f', 'bonus');
+    }
+
+    snake.forEach((segment, index) => {
+        const color = index === 0 ? '#2ecc71' : '#27ae60';
+        drawRect(segment.x, segment.y, color, 'snake', index === 0);
+    });
+}
 
 function initGame() {
     snake = [
@@ -71,121 +165,65 @@ function initGame() {
     clearTimeout(bonusFoodTimer);
     obstacles = [];
     generateObstacles();
+    drawStaticElements();
     pauseScreen.style.display = 'none';
     gameOverScreen.style.display = 'none';
     startScreen.style.display = 'none';
     setDifficulty();
     spawnFood();
-    if (gameLoopInterval) clearInterval(gameLoopInterval);
-    gameLoopInterval = setInterval(gameLoop, gameSpeed);
-    drawGame();
+    lastTime = 0;
+    requestAnimationFrame(gameLoop);
 }
 
 function setDifficulty() {
     const difficulty = difficultySelect.value;
     if (difficulty === 'easy') {
-        gameSpeed = 150;
-    } else if (difficulty === 'medium') {
         gameSpeed = 100;
+    } else if (difficulty === 'medium') {
+        gameSpeed = 66;
     } else if (difficulty === 'hard') {
-        gameSpeed = 70; // 稍微增加困难难度
+        gameSpeed = 50;
     }
 }
 
-function gameLoop() {
-    if (isPaused) return;
-    changingDirection = false;
-    moveSnake();
-    if (checkCollision()) {
-        gameOver();
+function gameLoop(timestamp) {
+    if (isPaused) {
+        requestAnimationFrame(gameLoop);
         return;
     }
-    if (snake[0].x === food.x && snake[0].y === food.y) {
-        eatFood(false);
+
+    frameCount++;
+    if (timestamp - lastFpsUpdate >= 1000) {
+        fps = frameCount;
+        frameCount = 0;
+        lastFpsUpdate = timestamp;
+        console.log(`FPS: ${fps}`);
     }
-    if (bonusFood && snake[0].x === bonusFood.x && snake[0].y === bonusFood.y) {
-        eatFood(true);
+
+    if (timestamp - lastTime >= gameSpeed) {
+        changingDirection = false;
+        moveSnake();
+        if (checkCollision()) {
+            gameOver();
+            return;
+        }
+        if (snake[0].x === food.x && snake[0].y === food.y) {
+            eatFood(false);
+        }
+        if (bonusFood && snake[0].x === bonusFood.x && snake[0].y === bonusFood.y) {
+            eatFood(true);
+        }
+        lastTime = timestamp;
     }
-    drawGame();
+
+    drawGame(timestamp);
+    requestAnimationFrame(gameLoop);
 }
 
 function moveSnake() {
     const head = { x: snake[0].x + dx, y: snake[0].y + dy };
     snake.unshift(head);
     snake.pop();
-}
-
-function drawGame() {
-    ctx.fillStyle = '#2c3e50';
-    ctx.fillRect(0, 0, gameBoard.width, gameBoard.height);
-
-    drawObstacles();
-    drawRect(food.x, food.y, '#e74c3c', 'normal'); // 食物颜色
-    if (bonusFood) {
-        drawRect(bonusFood.x, bonusFood.y, '#f1c40f', 'bonus'); // 奖励食物颜色
-    }
-
-    snake.forEach((segment, index) => {
-        const color = index === 0 ? '#2ecc71' : '#27ae60'; // 蛇头和身体颜色
-        drawRect(segment.x, segment.y, color, 'snake', index === 0);
-    });
-    // drawGrid();
-}
-
-function drawRect(x, y, color, type = 'snake', isHead = false) {
-    ctx.fillStyle = color;
-    const posX = x * tileSize;
-    const posY = y * tileSize;
-
-    if (type === 'normal' || type === 'bonus') {
-        const radius = tileSize / 2;
-        ctx.beginPath();
-        ctx.arc(posX + radius, posY + radius, radius * (type === 'bonus' ? 0.9 : 0.8), 0, 2 * Math.PI);
-        ctx.fill();
-        if (type === 'bonus') { // Blinking effect for bonus food
-            ctx.fillStyle = `rgba(255, 255, 255, ${Math.abs(Math.sin(Date.now() / 200)) * 0.5 + 0.3})`;
-        } else {
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        }
-        ctx.beginPath();
-        ctx.arc(posX + radius * 0.7, posY + radius * 0.7, radius * 0.3, 0, 2 * Math.PI);
-        ctx.fill();
-    } else if (type === 'obstacle') {
-        ctx.fillRect(posX, posY, tileSize, tileSize);
-        ctx.strokeStyle = '#5D3D76'; // Darker purple for border
-        ctx.lineWidth = 2;
-        ctx.strokeRect(posX + 1, posY + 1, tileSize - 2, tileSize - 2);
-    } else { // Snake
-        ctx.fillRect(posX, posY, tileSize -1 , tileSize -1 );
-        ctx.fillStyle = 'rgba(255,255,255,0.1)';
-        ctx.fillRect(posX, posY, tileSize -1, 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.1)';
-        ctx.fillRect(posX, posY + tileSize - 3, tileSize -1, 2);
-
-        if(isHead){
-            // Draw eyes
-            ctx.fillStyle = 'white';
-            const eyeRadius = tileSize / 8;
-            const eyeOffsetX = dx !== 0 ? tileSize / (dx > 0 ? 3 : 1.5) : tileSize / 2.5;
-            const eyeOffsetY = dy !== 0 ? tileSize / (dy > 0 ? 3 : 1.5) : tileSize / 2.5;
-            
-            ctx.beginPath();
-            ctx.arc(posX + eyeOffsetX, posY + eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
-            ctx.arc(posX + (dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX), 
-                    posY + (dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY), 
-                    eyeRadius, 0, 2 * Math.PI);
-            ctx.fill();
-
-            ctx.fillStyle = 'black';
-            const pupilRadius = eyeRadius / 2;
-            ctx.beginPath();
-            ctx.arc(posX + eyeOffsetX + dx * pupilRadius , posY + eyeOffsetY + dy * pupilRadius, pupilRadius, 0, 2 * Math.PI);
-            ctx.arc(posX + (dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX) + dx * pupilRadius, 
-                    posY + (dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY) + dy * pupilRadius, 
-                    pupilRadius, 0, 2 * Math.PI);
-            ctx.fill();
-        }
-    }
 }
 
 function generateObstacles() {
@@ -199,30 +237,20 @@ function generateObstacles() {
                 x: Math.floor(Math.random() * boardSize),
                 y: Math.floor(Math.random() * boardSize)
             };
-            // Check collision with initial snake position
             if (snake && snake.some(segment => segment.x === newObstacle.x && segment.y === newObstacle.y)) {
                 collisionWithSnakeOrFoodOrOtherObstacles = true;
                 continue;
             }
-            // Check collision with existing obstacles
             if (obstacles.some(obs => obs.x === newObstacle.x && obs.y === newObstacle.y)) {
                 collisionWithSnakeOrFoodOrOtherObstacles = true;
                 continue;
             }
-            // Avoid placing too close to initial snake head
-            if (snake && Math.abs(newObstacle.x - snake[0].x) < 3 && Math.abs(newObstacle.y - snake[0].y) < 3){
+            if (snake && Math.abs(newObstacle.x - snake[0].x) < 3 && Math.abs(newObstacle.y - snake[0].y) < 3) {
                 collisionWithSnakeOrFoodOrOtherObstacles = true;
             }
-
         } while (collisionWithSnakeOrFoodOrOtherObstacles);
         obstacles.push(newObstacle);
     }
-}
-
-function drawObstacles() {
-    obstacles.forEach(obs => {
-        drawRect(obs.x, obs.y, '#8e44ad', 'obstacle'); // 紫色障碍物
-    });
 }
 
 function spawnFood() {
@@ -239,14 +267,13 @@ function spawnFood() {
     );
     food = newFood;
 
-    // Chance to spawn bonus food if it doesn't exist
-    if (!bonusFood && Math.random() < 0.25) { // 25% chance
+    if (!bonusFood && Math.random() < 0.25) {
         spawnBonusFood();
     }
 }
 
 function spawnBonusFood() {
-    clearTimeout(bonusFoodTimer); // Clear any existing timer
+    clearTimeout(bonusFoodTimer);
     do {
         bonusFood = {
             x: Math.floor(Math.random() * boardSize),
@@ -260,7 +287,7 @@ function spawnBonusFood() {
 
     bonusFoodTimer = setTimeout(() => {
         bonusFood = null;
-        drawGame(); // Redraw to remove bonus food
+        drawGame(performance.now());
     }, BONUS_FOOD_DURATION);
 }
 
@@ -268,12 +295,12 @@ function eatFood(isBonus) {
     if (isBonus) {
         score += BONUS_FOOD_SCORE;
         bonusEatSound.play();
-        bonusFood = null; // Remove bonus food
+        bonusFood = null;
         clearTimeout(bonusFoodTimer);
     } else {
         score++;
         eatSound.play();
-        spawnFood(); // Only spawn normal food if normal food was eaten
+        spawnFood();
     }
     scoreDisplay.textContent = score;
     snake.push({ ...snake[snake.length - 1] });
@@ -282,22 +309,21 @@ function eatFood(isBonus) {
 function checkCollision() {
     const head = snake[0];
     if (head.x < 0 || head.x >= boardSize || head.y < 0 || head.y >= boardSize) {
-        return true; // Wall collision
+        return true;
     }
     for (let i = 1; i < snake.length; i++) {
         if (head.x === snake[i].x && head.y === snake[i].y) {
-            return true; // Self collision
+            return true;
         }
     }
     if (obstacles.some(obs => obs.x === head.x && obs.y === head.y)) {
-        return true; // Obstacle collision
+        return true;
     }
     return false;
 }
 
 function gameOver() {
     gameOverSound.play();
-    clearInterval(gameLoopInterval);
     clearTimeout(bonusFoodTimer);
     if (score > highScore) {
         highScore = score;
@@ -313,28 +339,26 @@ function togglePause() {
     isPaused = !isPaused;
     if (isPaused) {
         pauseScreen.style.display = 'flex';
-        clearTimeout(bonusFoodTimer); // Pause bonus food timer
+        clearTimeout(bonusFoodTimer);
     } else {
         pauseScreen.style.display = 'none';
-        if(bonusFood) { // Resume bonus food timer if it exists
-             const remainingTime = BONUS_FOOD_DURATION - (Date.now() - (bonusFood.spawnTime || Date.now())); //簡易的剩餘時間計算
-             if(remainingTime > 0){
+        if (bonusFood) {
+            const remainingTime = BONUS_FOOD_DURATION - (Date.now() - (bonusFood.spawnTime || Date.now()));
+            if (remainingTime > 0) {
                 bonusFoodTimer = setTimeout(() => {
                     bonusFood = null;
-                    drawGame();
+                    drawGame(performance.now());
                 }, remainingTime);
-             } else {
-                bonusFood = null; // if somehow time is already up
-             }
+            } else {
+                bonusFood = null;
+            }
         }
     }
 }
 
 function handleDirectionChange(newDx, newDy) {
     if (changingDirection) return;
-    // Prevent moving directly opposite
     if ((dx === -newDx && dx !== 0) || (dy === -newDy && dy !== 0)) return;
-
     if (isPaused) return;
     if (startScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex') return;
 
@@ -344,7 +368,7 @@ function handleDirectionChange(newDx, newDy) {
 }
 
 document.addEventListener('keydown', e => {
-    const key = e.key.toLowerCase(); // Use toLowerCase for wasd
+    const key = e.key.toLowerCase();
     if (key === 'p') {
         togglePause();
         return;
@@ -355,7 +379,11 @@ document.addEventListener('keydown', e => {
     else if (key === 'arrowright' || key === 'd') handleDirectionChange(1, 0);
 });
 
-// Mobile controls listeners
+if (btnUp) btnUp.addEventListener('touchstart', (e) => { e.preventDefault(); handleDirectionChange(0, -1); });
+if (btnDown) btnDown.addEventListener('touchstart', (e) => { e.preventDefault(); handleDirectionChange(0, 1); });
+if (btnLeft) btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); handleDirectionChange(-1, 0); });
+if (btnRight) btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); handleDirectionChange(1, 0); });
+
 if (btnUp) btnUp.addEventListener('click', () => handleDirectionChange(0, -1));
 if (btnDown) btnDown.addEventListener('click', () => handleDirectionChange(0, 1));
 if (btnLeft) btnLeft.addEventListener('click', () => handleDirectionChange(-1, 0));
@@ -370,4 +398,4 @@ restartButton.addEventListener('click', () => {
 });
 
 resizeCanvas();
-startScreen.style.display = 'flex'; 
+startScreen.style.display = 'flex';
