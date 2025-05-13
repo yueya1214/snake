@@ -212,4 +212,53 @@ footer {
     .difficulty-selector select {
         font-size: 0.9em;
     }
+}
+
+.game-control-button {
+    background-color: rgba(0,0,0,0.3);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.4);
+    padding: 8px 15px;
+    font-size: 0.9em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    margin-top: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.game-control-button:hover {
+    background-color: rgba(0,0,0,0.4);
+    transform: translateY(-1px);
+}
+
+.game-control-button i {
+    margin-right: 5px;
+}
+
+.mobile-controls button:active,
+.mobile-controls button.active-feedback {
+    background-color: rgba(255, 255, 255, 0.4);
+    transform: scale(0.95);
+}
+
+/* 浮动分数样式 */
+.floating-score {
+    position: absolute;
+    font-size: 1em;
+    font-weight: bold;
+    color: white;
+    opacity: 1;
+    transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+    pointer-events: none; /* 防止干扰点击 */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+/* 游戏结束粒子 (如果用 DOM 元素实现) */
+.explosion-particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 1;
+    transition: transform 0.5s cubic-bezier(0.1, 0.5, 0.5, 1), opacity 0.5s linear;
 } 

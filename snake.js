@@ -1,8 +1,9 @@
 const gameBoard = document.getElementById('game-board');
+const gameBoardContainer = gameBoard.parentElement; // For floating scores
 const ctx = gameBoard.getContext('2d');
 const scoreDisplay = document.getElementById('score');
 const highScoreDisplay = document.getElementById('high-score');
-const levelDisplay = document.getElementById('level'); // Added for level display
+const levelDisplay = document.getElementById('level');
 const startScreen = document.getElementById('start-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
 const pauseScreen = document.getElementById('pause-screen');
@@ -10,6 +11,7 @@ const finalScoreDisplay = document.getElementById('final-score');
 const startButton = document.getElementById('start-button');
 const restartButton = document.getElementById('restart-button');
 const difficultySelect = document.getElementById('difficulty');
+const toggleMusicButton = document.getElementById('toggle-music-button');
 
 const btnUp = document.getElementById('btn-up');
 const btnDown = document.getElementById('btn-down');
@@ -27,14 +29,17 @@ let dy;
 let score;
 let highScore = localStorage.getItem('snakeHighScore') || 0;
 highScoreDisplay.textContent = highScore;
-let gameSpeed; // This will be the delay between frames
+let gameSpeed;
 let isPaused = false;
+let isMusicPlaying = true; // Default to music декорации
 let changingDirection = false;
 let bonusFoodTimer;
+const BONUS_FOOD_DURATION = 8000;
 const BONUS_FOOD_SCORE = 5;
-let OBSTACLE_COUNT = 3; // Initial obstacle count, will be overridden by level config
+const OBSTACLE_COUNT = 5;
 let currentLevel = 1;
-let particles = []; // For apple eating animation
+let particles = [];
+let explosionParticles = []; // For game over
 
 const eatSound = { play: () => console.log('Play eat sound') };
 const gameOverSound = { play: () => console.log('Play game over sound') };
@@ -49,7 +54,6 @@ const eyeCtx = eyeCanvas.getContext('2d');
 let lastTime = 0;
 let blinkOpacity = 0.3;
 let lastBlinkUpdate = 0;
-// FPS counter (user added)
 let frameCount = 0;
 let fps = 0;
 let lastFpsUpdate = 0;
@@ -59,7 +63,7 @@ const levelConfig = [
     { level: 2, scoreToNextLevel: 15, obstacleCount: 5, bonusFoodDuration: 7500, speedMultiplier: 0.95 },
     { level: 3, scoreToNextLevel: 30, obstacleCount: 7, bonusFoodDuration: 7000, speedMultiplier: 0.9 },
     { level: 4, scoreToNextLevel: 50, obstacleCount: 10, bonusFoodDuration: 6500, speedMultiplier: 0.85 },
-    { level: 5, scoreToNextLevel: Infinity, obstacleCount: 12, bonusFoodDuration: 6000, speedMultiplier: 0.8 } // Max level
+    { level: 5, scoreToNextLevel: Infinity, obstacleCount: 12, bonusFoodDuration: 6000, speedMultiplier: 0.8 }
 ];
 
 let currentConfig;
@@ -73,7 +77,7 @@ function resizeCanvas() {
     offscreenCanvas.height = gameBoard.height;
     eyeCanvas.width = tileSize;
     eyeCanvas.height = tileSize;
-    if (currentConfig) drawStaticElements(); // Redraw static if config exists (meaning game might be active)
+    if (currentConfig) drawStaticElements();
     if (snake) {
         drawGame(performance.now());
     }
@@ -96,18 +100,18 @@ function drawEyes() {
     const eyeOffsetY = dy !== 0 ? tileSize / (dy > 0 ? 3 : 1.5) : tileSize / 2.5;
     eyeCtx.beginPath();
     eyeCtx.arc(eyeOffsetX, eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
-    eyeCtx.arc(dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX,
-        dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY,
-        eyeRadius, 0, 2 * Math.PI);
+    eyeCtx.arc(dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX, 
+               dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY, 
+               eyeRadius, 0, 2 * Math.PI);
     eyeCtx.fill();
 
     eyeCtx.fillStyle = 'black';
     const pupilRadius = eyeRadius / 2;
     eyeCtx.beginPath();
     eyeCtx.arc(eyeOffsetX + dx * pupilRadius, eyeOffsetY + dy * pupilRadius, pupilRadius, 0, 2 * Math.PI);
-    eyeCtx.arc((dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX) + dx * pupilRadius,
-        (dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY) + dy * pupilRadius,
-        pupilRadius, 0, 2 * Math.PI);
+    eyeCtx.arc((dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX) + dx * pupilRadius, 
+               (dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY) + dy * pupilRadius, 
+               pupilRadius, 0, 2 * Math.PI);
     eyeCtx.fill();
 }
 
@@ -130,7 +134,7 @@ function drawRect(x, y, color, type = 'snake', isHead = false, context = ctx) {
         context.strokeStyle = '#5D3D76';
         context.lineWidth = 2;
         context.strokeRect(posX + 1, posY + 1, tileSize - 2, tileSize - 2);
-    } else { // Snake
+    } else {
         context.fillRect(posX, posY, tileSize - 1, tileSize - 1);
         context.fillStyle = 'rgba(255,255,255,0.1)';
         context.fillRect(posX, posY, tileSize - 1, 2);
@@ -144,17 +148,17 @@ function drawRect(x, y, color, type = 'snake', isHead = false, context = ctx) {
     }
 }
 
-function createParticles(x, y, color) {
-    const particleCount = 5 + Math.floor(Math.random() * 5);
+function createParticles(x, y, color, countMultiplier = 1, speedMultiplier = 1, lifeMultiplier = 1) {
+    const particleCount = Math.floor((8 + Math.random() * 7) * countMultiplier);
     for (let i = 0; i < particleCount; i++) {
         particles.push({
             x: (x + 0.5) * tileSize,
             y: (y + 0.5) * tileSize,
-            vx: (Math.random() - 0.5) * 3, // Random velocity x
-            vy: (Math.random() - 0.5) * 3, // Random velocity y
-            radius: Math.random() * 2 + 1,
+            vx: (Math.random() - 0.5) * (3 * speedMultiplier),
+            vy: (Math.random() - 0.5) * (3 * speedMultiplier),
+            radius: Math.random() * 2.5 + 1.5,
             color: color,
-            life: 20 + Math.random() * 10, // Lifespan in frames
+            life: (30 + Math.random() * 20) * lifeMultiplier,
             opacity: 1
         });
     }
@@ -165,8 +169,9 @@ function updateAndDrawParticles(context) {
         const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
+        p.vy += 0.05; // Gravity effect for food particles
         p.life--;
-        p.opacity = p.life / 30; // Fade out
+        p.opacity = Math.max(0, p.life / (30 * (p.lifeMultiplier || 1) ));
 
         if (p.life <= 0) {
             particles.splice(i, 1);
@@ -179,13 +184,53 @@ function updateAndDrawParticles(context) {
     }
 }
 
+function createExplosionParticles(snakeSegments) {
+    explosionParticles = []; // Clear previous explosion
+    snakeSegments.forEach(segment => {
+        const particleCount = 10 + Math.floor(Math.random() * 10);
+        for (let i = 0; i < particleCount; i++) {
+            explosionParticles.push({
+                x: (segment.x + 0.5) * tileSize,
+                y: (segment.y + 0.5) * tileSize,
+                vx: (Math.random() - 0.5) * 8, // Wider spread
+                vy: (Math.random() - 0.5) * 8 - Math.random() * 3, // Upward thrust
+                radius: Math.random() * 3 + 2,
+                color: i % 2 === 0 ? '#2ecc71' : '#27ae60', // Snake colors
+                life: 40 + Math.random() * 30, // Longer life
+                opacity: 1
+            });
+        }
+    });
+}
+
+function updateAndDrawExplosion(context) {
+    for (let i = explosionParticles.length - 1; i >= 0; i--) {
+        const p = explosionParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.15; // Gravity for explosion
+        p.life--;
+        p.opacity = Math.max(0, p.life / 60);
+
+        if (p.life <= 0) {
+            explosionParticles.splice(i, 1);
+        } else {
+            context.beginPath();
+            context.arc(p.x, p.y, p.radius, 0, Math.PI * 2, false);
+            context.fillStyle = `rgba(${hexToRgb(p.color)}, ${p.opacity})`;
+            context.fill();
+        }
+    }
+    return explosionParticles.length > 0; // Return true if still animating
+}
+
 function hexToRgb(hex) {
     let r = 0, g = 0, b = 0;
-    if (hex.length == 4) { // #RGB
+    if (hex.length == 4) {
         r = parseInt(hex[1] + hex[1], 16);
         g = parseInt(hex[2] + hex[2], 16);
         b = parseInt(hex[3] + hex[3], 16);
-    } else if (hex.length == 7) { // #RRGGBB
+    } else if (hex.length == 7) {
         r = parseInt(hex[1] + hex[2], 16);
         g = parseInt(hex[3] + hex[4], 16);
         b = parseInt(hex[5] + hex[6], 16);
@@ -196,8 +241,8 @@ function hexToRgb(hex) {
 function drawGame(timestamp) {
     ctx.drawImage(offscreenCanvas, 0, 0);
 
-    if (timestamp - lastBlinkUpdate > 100) { // Faster blink for bonus food
-        blinkOpacity = Math.abs(Math.sin(timestamp / 100)) * 0.6 + 0.4; // Brighter blink
+    if (timestamp - lastBlinkUpdate > 100) {
+        blinkOpacity = Math.abs(Math.sin(timestamp / 100)) * 0.6 + 0.4;
         lastBlinkUpdate = timestamp;
     }
 
@@ -206,27 +251,31 @@ function drawGame(timestamp) {
         drawRect(bonusFood.x, bonusFood.y, '#f1c40f', 'bonus');
     }
 
-    snake.forEach((segment, index) => {
-        const color = index === 0 ? '#2ecc71' : '#27ae60';
-        drawRect(segment.x, segment.y, color, 'snake', index === 0);
-    });
-    updateAndDrawParticles(ctx); // Draw particles on main context
+    if (!isGameOverAnimating) { // Only draw snake if not in game over
+        snake.forEach((segment, index) => {
+            const color = index === 0 ? '#2ecc71' : '#27ae60';
+            drawRect(segment.x, segment.y, color, 'snake', index === 0);
+        });
+    }
+    updateAndDrawParticles(ctx);
+    if(isGameOverAnimating) updateAndDrawExplosion(ctx);
 }
+
+let isGameOverAnimating = false;
 
 function loadLevel(level) {
     currentConfig = levelConfig.find(lc => lc.level === level);
     if (!currentConfig) {
-        currentConfig = levelConfig[levelConfig.length - 1]; // Default to max level if something goes wrong
+        currentConfig = levelConfig[levelConfig.length - 1];
         console.warn(`Level ${level} config not found, using max level config.`);
     }
     OBSTACLE_COUNT = currentConfig.obstacleCount;
-    // gameSpeed is set by difficulty, but can be modified by levelConfig.speedMultiplier
-    setDifficulty(); // Recalculate base speed from difficulty
-    gameSpeed = Math.round(gameSpeed * currentConfig.speedMultiplier); // Adjust speed for level
+    setDifficulty();
+    gameSpeed = Math.round(gameSpeed * currentConfig.speedMultiplier);
     
     levelDisplay.textContent = currentLevel;
     generateObstacles();
-    drawStaticElements(); // Redraw background and new obstacles
+    drawStaticElements();
 }
 
 function initGame() {
@@ -242,62 +291,73 @@ function initGame() {
     currentLevel = 1;
     loadLevel(currentLevel);
     isPaused = false;
+    isGameOverAnimating = false;
     changingDirection = false;
     bonusFood = null;
     clearTimeout(bonusFoodTimer);
-    particles = []; // Clear particles
+    particles = [];
+    explosionParticles = [];
     pauseScreen.style.display = 'none';
     gameOverScreen.style.display = 'none';
     startScreen.style.display = 'none';
     spawnFood();
     lastTime = 0;
+    if (isMusicPlaying && sounds.backgroundMusic.play) sounds.backgroundMusic.play();
     requestAnimationFrame(gameLoop);
 }
 
 function setDifficulty() {
     const difficulty = difficultySelect.value;
-    // Halved speeds (doubled delay) as requested by user
     if (difficulty === 'easy') {
-        gameSpeed = 200; // Was 100 in user's code, orig 150
+        gameSpeed = 200;
     } else if (difficulty === 'medium') {
-        gameSpeed = 132; // Was 66, orig 100
+        gameSpeed = 132;
     } else if (difficulty === 'hard') {
-        gameSpeed = 100; // Was 50, orig 70
+        gameSpeed = 100;
     }
-    // If a level is already loaded, re-apply its speed multiplier
     if (currentConfig) {
          gameSpeed = Math.round(gameSpeed * currentConfig.speedMultiplier);
     }
 }
 
 function gameLoop(timestamp) {
-    if (isPaused) {
+    if (isPaused && !isGameOverAnimating) {
         requestAnimationFrame(gameLoop);
         return;
     }
 
-    // FPS counter (user added)
     frameCount++;
     if (timestamp - lastFpsUpdate >= 1000) {
         fps = frameCount;
         frameCount = 0;
         lastFpsUpdate = timestamp;
-        // console.log(`FPS: ${fps}`); // Can be noisy, uncomment if needed
+    }
+
+    if (isGameOverAnimating) {
+        drawGame(timestamp); // Keep drawing explosion
+        if (!updateAndDrawExplosion(ctx)) {
+            isGameOverAnimating = false; // Animation finished
+            gameOverScreen.style.display = 'flex'; // Show actual game over screen
+        }
+        requestAnimationFrame(gameLoop);
+        return;
     }
 
     if (timestamp - lastTime >= gameSpeed) {
         changingDirection = false;
         moveSnake();
         if (checkCollision()) {
-            gameOver();
+            gameOver(); // This will now trigger animation first
             return;
         }
         if (snake[0].x === food.x && snake[0].y === food.y) {
             createParticles(food.x, food.y, '#e74c3c');
+            showFloatingScore('+1', food.x, food.y);
             eatFood(false);
         }
         if (bonusFood && snake[0].x === bonusFood.x && snake[0].y === bonusFood.y) {
-            createParticles(bonusFood.x, bonusFood.y, '#f1c40f');
+            createParticles(bonusFood.x, bonusFood.y, '#f1c40f', 1.5, 1.2, 1.2);
+            showFloatingScore(`+${BONUS_FOOD_SCORE}`, bonusFood.x, bonusFood.y, '#f1c40f');
             eatFood(true);
         }
         lastTime = timestamp;
@@ -311,7 +371,6 @@ function moveSnake() {
     let headX = snake[0].x + dx;
     let headY = snake[0].y + dy;
 
-    // Wall wrap-around logic
     if (headX < 0) headX = boardSize - 1;
     if (headX >= boardSize) headX = 0;
     if (headY < 0) headY = boardSize - 1;
@@ -344,13 +403,10 @@ function generateObstacles() {
             if (snake && Math.abs(newObstacle.x - snake[0].x) < 3 && Math.abs(newObstacle.y - snake[0].y) < 3) {
                 collisionWithSnakeOrFoodOrOtherObstacles = true;
             }
-            // Check collision with potential food positions (less critical here as food spawns after)
-
         } while (collisionWithSnakeOrFoodOrOtherObstacles);
         obstacles.push(newObstacle);
     }
 }
-
 
 function spawnFood() {
     let newFood;
@@ -366,7 +422,7 @@ function spawnFood() {
     );
     food = newFood;
 
-    if (!bonusFood && Math.random() < 0.25 && currentConfig) { // Spawn bonus food based on chance
+    if (!bonusFood && Math.random() < 0.25 && currentConfig) {
         spawnBonusFood(currentConfig.bonusFoodDuration);
     }
 }
@@ -383,66 +439,66 @@ function spawnBonusFood(duration) {
         obstacles.some(obs => obs.x === bonusFood.x && obs.y === bonusFood.y) ||
         (food.x === bonusFood.x && food.y === bonusFood.y)
     );
-    bonusFood.spawnTime = Date.now(); // Record spawn time for pause resume logic
+    bonusFood.spawnTime = Date.now();
 
     bonusFoodTimer = setTimeout(() => {
         bonusFood = null;
-        // drawGame(performance.now()); // drawGame is called by gameLoop
     }, duration);
 }
 
 function eatFood(isBonus) {
     if (isBonus) {
         score += BONUS_FOOD_SCORE;
-        bonusEatSound.play();
+        if (sounds.bonusEat.play) sounds.bonusEat.play();
         bonusFood = null;
         clearTimeout(bonusFoodTimer);
     } else {
         score++;
-        eatSound.play();
-        // Spawn food is now handled after particles in gameLoop, if this was normal food
+        if (sounds.eat.play) sounds.eat.play();
     }
     scoreDisplay.textContent = score;
     snake.push({ ...snake[snake.length - 1] });
 
-    // Level Up Logic
     if (currentConfig && score >= currentConfig.scoreToNextLevel && currentLevel < levelConfig.length) {
         currentLevel++;
-        levelUpSound.play();
+        if (sounds.levelUp.play) sounds.levelUp.play();
         loadLevel(currentLevel);
-        // Potentially show a level up message on screen for a short duration
     }
-    if(!isBonus) spawnFood(); // Spawn new normal food only if normal food was eaten
+    if (!isBonus) spawnFood();
 }
 
 function checkCollision() {
     const head = snake[0];
-    // Wall collision is removed for wrap-around
-
     for (let i = 1; i < snake.length; i++) {
         if (head.x === snake[i].x && head.y === snake[i].y) {
-            return true; // Self collision
+            return true;
         }
     }
     if (obstacles.some(obs => obs.x === head.x && obs.y === head.y)) {
-        return true; // Obstacle collision
+        return true;
     }
     return false;
 }
 
 function gameOver() {
-    gameOverSound.play();
+    if (sounds.gameOver.play) sounds.gameOver.play();
+    if (sounds.backgroundMusic.pause) sounds.backgroundMusic.pause();
     clearTimeout(bonusFoodTimer);
+    createExplosionParticles([...snake]); // Pass a copy of snake segments
+    isGameOverAnimating = true; // Start animation loop
+    // The actual gameOverScreen display is deferred until animation ends
+
     if (score > highScore) {
         highScore = score;
         highScoreDisplay.textContent = highScore;
         localStorage.setItem('snakeHighScore', highScore);
     }
     finalScoreDisplay.textContent = score;
-    gameOverScreen.style.display = 'flex';
+    // gameOverScreen.style.display = 'flex'; // Moved to end of animation
 }
 
 function togglePause() {
+    if (isGameOverAnimating) return; // Don't allow pause during game over animation
     if (gameOverScreen.style.display === 'flex' || startScreen.style.display === 'flex') return;
     isPaused = !isPaused;
     if (isPaused) {
@@ -451,25 +507,54 @@ function togglePause() {
         if (bonusFood) {
             bonusFood.remainingTimeOnPause = currentConfig.bonusFoodDuration - (Date.now() - bonusFood.spawnTime);
         }
+        if (isMusicPlaying && sounds.backgroundMusic.pause) sounds.backgroundMusic.pause();
     } else {
         pauseScreen.style.display = 'none';
         if (bonusFood && bonusFood.remainingTimeOnPause > 0) {
-            bonusFood.spawnTime = Date.now(); // Reset spawnTime to calculate remaining from now
+            bonusFood.spawnTime = Date.now();
             bonusFoodTimer = setTimeout(() => {
                 bonusFood = null;
             }, bonusFood.remainingTimeOnPause);
         }
+        if (isMusicPlaying && sounds.backgroundMusic.play) sounds.backgroundMusic.play();
     }
 }
 
-function handleDirectionChange(newDx, newDy) {
+function showFloatingScore(text, x, y, color = '#fff') {
+    const scoreText = document.createElement('div');
+    scoreText.classList.add('floating-score');
+    scoreText.textContent = text;
+    scoreText.style.left = `${(x + 0.25) * tileSize}px`;
+    scoreText.style.top = `${(y + 0.25) * tileSize}px`;
+    scoreText.style.color = color;
+
+    gameBoardContainer.appendChild(scoreText);
+
+    requestAnimationFrame(() => {
+        scoreText.style.transform = 'translateY(-30px)';
+        scoreText.style.opacity = '0';
+    });
+
+    setTimeout(() => {
+        if (scoreText.parentElement) {
+            scoreText.parentElement.removeChild(scoreText);
+        }
+    }, 500);
+}
+
+function handleDirectionChange(newDx, newDy, buttonElement = null) {
     if (changingDirection) return;
     if ((dx === -newDx && dx !== 0) || (dy === -newDy && dy !== 0)) return;
-    if (isPaused) return;
+    if (isPaused || isGameOverAnimating) return;
     if (startScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex') return;
     changingDirection = true;
     dx = newDx;
     dy = newDy;
+
+    if (buttonElement) {
+        buttonElement.classList.add('active-feedback');
+        setTimeout(() => buttonElement.classList.remove('active-feedback'), 100);
+    }
 }
 
 document.addEventListener('keydown', e => {
@@ -478,16 +563,46 @@ document.addEventListener('keydown', e => {
         togglePause();
         return;
     }
-    if (key === 'arrowup' || key === 'w') handleDirectionChange(0, -1);
-    else if (key === 'arrowdown' || key === 's') handleDirectionChange(0, 1);
-    else if (key === 'arrowleft' || key === 'a') handleDirectionChange(-1, 0);
-    else if (key === 'arrowright' || key === 'd') handleDirectionChange(1, 0);
+    let targetButton = null;
+    if (key === 'arrowup' || key === 'w') { handleDirectionChange(0, -1); targetButton = btnUp; }
+    else if (key === 'arrowdown' || key === 's') { handleDirectionChange(0, 1); targetButton = btnDown; }
+    else if (key === 'arrowleft' || key === 'a') { handleDirectionChange(-1, 0); targetButton = btnLeft; }
+    else if (key === 'arrowright' || key === 'd') { handleDirectionChange(1, 0); targetButton = btnRight; }
+
+    // Simulate button press feedback for keyboard
+    if (targetButton && targetButton.offsetParent !== null) { // Check if button is visible
+        targetButton.classList.add('active-feedback');
+        setTimeout(() => targetButton.classList.remove('active-feedback'), 100);
+    }
 });
 
-if (btnUp) btnUp.addEventListener('touchstart', (e) => { e.preventDefault(); handleDirectionChange(0, -1); });
-if (btnDown) btnDown.addEventListener('touchstart', (e) => { e.preventDefault(); handleDirectionChange(0, 1); });
-if (btnLeft) btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); handleDirectionChange(-1, 0); });
-if (btnRight) btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); handleDirectionChange(1, 0); });
+// Mobile controls listeners with feedback
+[btnUp, btnDown, btnLeft, btnRight].forEach(btn => {
+    if (btn) {
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            let newDx = 0, newDy = 0;
+            if (btn === btnUp) newDy = -1;
+            else if (btn === btnDown) newDy = 1;
+            else if (btn === btnLeft) newDx = -1;
+            else if (btn === btnRight) newDx = 1;
+            handleDirectionChange(newDx, newDy, btn);
+        });
+    }
+});
+
+if (toggleMusicButton) {
+    toggleMusicButton.addEventListener('click', () => {
+        isMusicPlaying = !isMusicPlaying;
+        if (isMusicPlaying) {
+            if (sounds.backgroundMusic.play && !isPaused && startScreen.style.display === 'none' && !isGameOverAnimating) sounds.backgroundMusic.play();
+            toggleMusicButton.innerHTML = '<i class="fas fa-music"></i> 背景音乐: 开';
+        } else {
+            if (sounds.backgroundMusic.pause) sounds.backgroundMusic.pause();
+            toggleMusicButton.innerHTML = '<i class="fas fa-volume-mute"></i> 背景音乐: 关';
+        }
+    });
+}
 
 startButton.addEventListener('click', () => {
     initGame();
