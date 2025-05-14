@@ -132,7 +132,7 @@ function drawStaticElements() {
     offscreenCtx.fillStyle = '#2c3e50';
     offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
     obstacles.forEach(obs => {
-        drawRect(obs.x, obs.y, '#8e44ad', 'obstacle', false, offscreenCtx);
+        drawRect(obs.x, obs.y, '#8e44ad', 'obstacle', false, false, offscreenCtx);
     });
 }
 
