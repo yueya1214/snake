@@ -40,8 +40,8 @@ let snake;
 let food;
 let bonusFood = null;
 let obstacles = [];
-let dx = 1; // 初始化 dx，确保眼睛绘制有方向
-let dy = 0; // 初始化 dy
+let dx;
+let dy;
 let score;
 let highScore = localStorage.getItem('snakeHighScore') || 0;
 highScoreDisplay.textContent = highScore;
@@ -136,27 +136,45 @@ function drawStaticElements() {
     });
 }
 
-function drawEyes() {
-    eyeCtx.clearRect(0, 0, tileSize, tileSize);
-    eyeCtx.fillStyle = 'white';
-    const eyeRadius = tileSize / 8;
+function drawEyes(posX, posY, context = ctx) {
+    // 保存填充样式
+    const originalFill = context.fillStyle;
+    
+    // 眼球
+    context.fillStyle = 'white';
+    const eyeRadius = tileSize / 6;
     const eyeOffsetX = dx !== 0 ? tileSize / (dx > 0 ? 3 : 1.5) : tileSize / 2.5;
     const eyeOffsetY = dy !== 0 ? tileSize / (dy > 0 ? 3 : 1.5) : tileSize / 2.5;
-    eyeCtx.beginPath();
-    eyeCtx.arc(eyeOffsetX, eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
-    eyeCtx.arc(dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX, 
-               dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY, 
-               eyeRadius, 0, 2 * Math.PI);
-    eyeCtx.fill();
-
-    eyeCtx.fillStyle = 'black';
+    
+    context.beginPath();
+    context.arc(posX + eyeOffsetX, posY + eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
+    context.fill();
+    
+    context.beginPath();
+    context.arc(posX + (dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX), 
+              posY + (dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY), 
+              eyeRadius, 0, 2 * Math.PI);
+    context.fill();
+    
+    // 瞳孔
+    context.fillStyle = 'black';
     const pupilRadius = eyeRadius / 2;
-    eyeCtx.beginPath();
-    eyeCtx.arc(eyeOffsetX + dx * pupilRadius, eyeOffsetY + dy * pupilRadius, pupilRadius, 0, 2 * Math.PI);
-    eyeCtx.arc((dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX) + dx * pupilRadius, 
-               (dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY) + dy * pupilRadius, 
-               pupilRadius, 0, 2 * Math.PI);
-    eyeCtx.fill();
+    const pupilOffset = pupilRadius / 2; // 眼球移动量
+    
+    context.beginPath();
+    context.arc(posX + eyeOffsetX + (dx * pupilOffset), 
+              posY + eyeOffsetY + (dy * pupilOffset), 
+              pupilRadius, 0, 2 * Math.PI);
+    context.fill();
+    
+    context.beginPath();
+    context.arc(posX + (dx !== 0 ? eyeOffsetX : tileSize - eyeOffsetX) + (dx * pupilOffset), 
+              posY + (dy !== 0 ? eyeOffsetY : tileSize - eyeOffsetY) + (dy * pupilOffset), 
+              pupilRadius, 0, 2 * Math.PI);
+    context.fill();
+    
+    // 恢复填充样式
+    context.fillStyle = originalFill;
 }
 
 function drawRect(x, y, color, type = 'snake', isHead = false, isTail = false, context = ctx) {
@@ -165,6 +183,7 @@ function drawRect(x, y, color, type = 'snake', isHead = false, isTail = false, c
     const posY = y * tileSize;
 
     if (type === 'normal' || type === 'bonus') {
+        // 绘制食物
         const radius = tileSize / 2;
         context.beginPath();
         context.arc(posX + radius, posY + radius, radius * (type === 'bonus' ? 0.9 : 0.8), 0, 2 * Math.PI);
@@ -174,57 +193,44 @@ function drawRect(x, y, color, type = 'snake', isHead = false, isTail = false, c
         context.arc(posX + radius * 0.7, posY + radius * 0.7, radius * 0.3, 0, 2 * Math.PI);
         context.fill();
     } else if (type === 'obstacle') {
+        // 绘制障碍物
         context.fillRect(posX, posY, tileSize, tileSize);
         context.strokeStyle = '#5D3D76';
         context.lineWidth = 2;
         context.strokeRect(posX + 1, posY + 1, tileSize - 2, tileSize - 2);
     } else {
-        // 蛇的绘制
+        // 绘制蛇的各部分
         if (isHead) {
-            // 蛇头 - 绘制为圆形
-            const headRadius = tileSize / 2 - 1;
+            // 头部 - 圆形
+            const headRadius = tileSize / 2 * 0.95;
             context.beginPath();
-            context.arc(posX + tileSize / 2, posY + tileSize / 2, headRadius, 0, 2 * Math.PI);
+            context.arc(posX + tileSize/2, posY + tileSize/2, headRadius, 0, 2 * Math.PI);
             context.fill();
             
-            // 添加头部皮肤纹理
-            context.fillStyle = 'rgba(0,0,0,0.1)';
-            context.beginPath();
-            context.arc(posX + tileSize / 2, posY + tileSize / 2, headRadius * 0.7, 0, 2 * Math.PI);
-            context.fill();
-            
-            drawEyes();
-            context.drawImage(eyeCanvas, posX, posY);
+            // 眼睛
+            drawEyes(posX, posY, context);
         } else if (isTail) {
-            // 蛇尾 - 绘制为小一些的圆形
+            // 尾部 - 小圆形
+            const tailRadius = tileSize / 2 * 0.75;
             context.beginPath();
-            context.arc(posX + tileSize / 2, posY + tileSize / 2, tileSize / 3, 0, 2 * Math.PI);
+            context.arc(posX + tileSize/2, posY + tileSize/2, tailRadius, 0, 2 * Math.PI);
             context.fill();
             
-            // 尾部纹理
+            // 尾部装饰
             context.fillStyle = 'rgba(0,0,0,0.15)';
             context.beginPath();
-            context.arc(posX + tileSize / 2, posY + tileSize / 2, tileSize / 6, 0, 2 * Math.PI);
+            context.arc(posX + tileSize/2, posY + tileSize/2, tailRadius/2, 0, 2 * Math.PI);
             context.fill();
         } else {
-            // 蛇身 - 圆角矩形
+            // 身体 - 圆角矩形
             const radius = tileSize / 4;
             context.beginPath();
-            context.moveTo(posX + radius, posY);
-            context.lineTo(posX + tileSize - radius, posY);
-            context.quadraticCurveTo(posX + tileSize, posY, posX + tileSize, posY + radius);
-            context.lineTo(posX + tileSize, posY + tileSize - radius);
-            context.quadraticCurveTo(posX + tileSize, posY + tileSize, posX + tileSize - radius, posY + tileSize);
-            context.lineTo(posX + radius, posY + tileSize);
-            context.quadraticCurveTo(posX, posY + tileSize, posX, posY + tileSize - radius);
-            context.lineTo(posX, posY + radius);
-            context.quadraticCurveTo(posX, posY, posX + radius, posY);
-            context.closePath();
+            context.roundRect(posX + 1, posY + 1, tileSize - 2, tileSize - 2, radius);
             context.fill();
             
-            // 添加身体纹理
+            // 身体纹理
             context.fillStyle = 'rgba(255,255,255,0.1)';
-            context.fillRect(posX + 2, posY + 2, tileSize - 4, tileSize / 3);
+            context.fillRect(posX + tileSize * 0.15, posY + tileSize * 0.15, tileSize * 0.7, tileSize * 0.25);
         }
     }
 }
@@ -285,6 +291,13 @@ function createExplosionParticles(snakeSegments) {
 }
 
 function updateAndDrawExplosion(context) {
+    if (!isGameOverAnimating) return false;
+    
+    if (explosionParticles.length === 0) {
+        isGameOverAnimating = false;
+        return false;
+    }
+    
     for (let i = explosionParticles.length - 1; i >= 0; i--) {
         const p = explosionParticles[i];
         p.x += p.vx;
@@ -303,20 +316,7 @@ function updateAndDrawExplosion(context) {
         }
     }
     
-    // 当爆炸动画结束，显示游戏结束屏幕
-    if (explosionParticles.length === 0 && isGameOverAnimating) {
-        isGameOverAnimating = false;
-        showGameOverScreen();
-    }
-    
     return explosionParticles.length > 0;
-}
-
-function showGameOverScreen() {
-    startScreen.style.display = 'none';
-    pauseScreen.style.display = 'none';
-    gameOverScreen.style.display = 'flex';
-    console.log('游戏结束屏幕已显示');
 }
 
 function hexToRgb(hex) {
@@ -334,43 +334,60 @@ function hexToRgb(hex) {
 }
 
 function drawGame(timestamp) {
+    // 绘制背景
     ctx.drawImage(offscreenCanvas, 0, 0);
-
+    
+    // 更新闪烁效果
     if (timestamp - lastBlinkUpdate > 100) {
         blinkOpacity = Math.abs(Math.sin(timestamp / 100)) * 0.6 + 0.4;
         lastBlinkUpdate = timestamp;
     }
-
+    
+    // 绘制食物
     drawRect(food.x, food.y, '#e74c3c', 'normal');
     if (bonusFood) {
         drawRect(bonusFood.x, bonusFood.y, '#f1c40f', 'bonus');
     }
-
+    
+    // 绘制蛇
     if (!isGameOverAnimating) {
         snake.forEach((segment, index) => {
             const isHead = index === 0;
             const isTail = index === snake.length - 1;
             
-            // 颜色渐变效果，从头到尾
+            // 计算颜色
             let color;
             if (isHead) {
-                color = '#2ecc71'; // 蛇头颜色
+                color = '#2ecc71'; // 亮绿色头部
             } else if (isTail) {
-                color = '#27ae60'; // 蛇尾颜色
+                color = '#27ae60'; // 深绿色尾部
             } else {
-                // 身体部分使用渐变色，从亮到暗
-                const ratio = 1 - (index / (snake.length - 1));
-                const r = Math.round(46 + (46 * ratio));
-                const g = Math.round(204 + (17 * ratio));
-                const b = Math.round(113 + (-17 * ratio));
+                // 身体渐变色
+                const gradient = 1 - (index / snake.length);
+                const r = Math.round(39 + 15 * gradient);
+                const g = Math.round(174 + 30 * gradient);
+                const b = Math.round(96 + 5 * gradient);
                 color = `rgb(${r}, ${g}, ${b})`;
             }
             
             drawRect(segment.x, segment.y, color, 'snake', isHead, isTail);
         });
     }
+    
+    // 绘制粒子
     updateAndDrawParticles(ctx);
-    if (isGameOverAnimating) updateAndDrawExplosion(ctx);
+    
+    // 绘制爆炸效果
+    if (isGameOverAnimating) {
+        const stillAnimating = updateAndDrawExplosion(ctx);
+        if (!stillAnimating) {
+            isGameOverAnimating = false;
+            if (gameOverScreen.style.display !== 'flex') {
+                gameOverScreen.style.display = 'flex';
+                console.log('游戏结束屏幕显示 (爆炸动画完成)');
+            }
+        }
+    }
 }
 
 function loadLevel(level) {
@@ -409,15 +426,14 @@ function initGame() {
         clearTimeout(bonusFoodTimer);
         particles = [];
         explosionParticles = [];
-        startScreen.style.display = 'none';
         pauseScreen.style.display = 'none';
         gameOverScreen.style.display = 'none';
+        startScreen.style.display = 'none';
         spawnFood();
         lastTime = 0;
         if (isMusicPlaying && sounds.backgroundMusic.play) {
             sounds.backgroundMusic.play().catch(e => console.error('Music play error:', e));
         }
-        resizeCanvas(); // 确保画布尺寸正确
         requestAnimationFrame(gameLoop);
     } catch (error) {
         console.error('Error in initGame:', error);
@@ -440,50 +456,57 @@ function setDifficulty() {
 
 function gameLoop(timestamp) {
     try {
+        // 暂停检查
         if (isPaused && !isGameOverAnimating) {
             requestAnimationFrame(gameLoop);
             return;
         }
-
+        
+        // FPS计算
         frameCount++;
         if (timestamp - lastFpsUpdate >= 1000) {
             fps = frameCount;
             frameCount = 0;
             lastFpsUpdate = timestamp;
         }
-
-        if (isGameOverAnimating) {
-            drawGame(timestamp);
-            updateAndDrawExplosion(ctx); // 动画结束后由 updateAndDrawExplosion 处理显示
-            requestAnimationFrame(gameLoop);
-            return;
-        }
-
-        if (timestamp - lastTime >= gameSpeed) {
+        
+        // 绘制游戏画面
+        drawGame(timestamp);
+        
+        // 游戏逻辑
+        if (!isPaused && !isGameOverAnimating && timestamp - lastTime >= gameSpeed) {
             changingDirection = false;
             moveSnake();
+            
+            // 碰撞检测
             if (checkCollision()) {
+                console.log('游戏循环: 检测到碰撞，调用gameOver()');
                 gameOver();
+                requestAnimationFrame(gameLoop);
                 return;
             }
+            
+            // 食物检测
             if (snake[0].x === food.x && snake[0].y === food.y) {
                 createParticles(food.x, food.y, '#e74c3c');
                 showFloatingScore('+1', food.x, food.y);
                 eatFood(false);
             }
+            
             if (bonusFood && snake[0].x === bonusFood.x && snake[0].y === bonusFood.y) {
                 createParticles(bonusFood.x, bonusFood.y, '#f1c40f', 1.5, 1.2, 1.2);
                 showFloatingScore(`+${BONUS_FOOD_SCORE}`, bonusFood.x, bonusFood.y, '#f1c40f');
                 eatFood(true);
             }
+            
             lastTime = timestamp;
         }
-
-        drawGame(timestamp);
+        
         requestAnimationFrame(gameLoop);
     } catch (error) {
-        console.error('Error in gameLoop:', error);
-        showGameOverScreen();
+        console.error('游戏循环错误:', error);
+        // 确保出错时也显示游戏结束屏幕
+        gameOverScreen.style.display = 'flex';
     }
 }
 
@@ -594,23 +617,43 @@ function eatFood(isBonus) {
 function checkCollision() {
     const head = snake[0];
     
+    // 检查是否与自身碰撞
     for (let i = 1; i < snake.length; i++) {
         if (head.x === snake[i].x && head.y === snake[i].y) {
+            console.log('碰撞：蛇头碰到自身！位置:', head);
             return true;
         }
     }
     
-    if (obstacles.some(obs => obs.x === head.x && obs.y === head.y)) {
-        return true;
+    // 检查是否与障碍物碰撞
+    for (let i = 0; i < obstacles.length; i++) {
+        if (head.x === obstacles[i].x && head.y === obstacles[i].y) {
+            console.log('碰撞：蛇头碰到障碍物！障碍物位置:', obstacles[i]);
+            return true;
+        }
     }
     
     return false;
 }
 
 function gameOver() {
+    console.log('游戏结束函数被调用');
+    
+    // 停止游戏
+    isPaused = true;
+    
+    // 播放音效
     playSound(sounds.gameOver);
-    if (sounds.backgroundMusic.pause) sounds.backgroundMusic.pause();
+    
+    // 停止背景音乐
+    if (sounds.backgroundMusic && typeof sounds.backgroundMusic.pause === 'function') {
+        sounds.backgroundMusic.pause();
+    }
+    
+    // 清除计时器
     clearTimeout(bonusFoodTimer);
+    
+    // 创建爆炸动画
     createExplosionParticles([...snake]);
     isGameOverAnimating = true;
     
@@ -637,17 +680,43 @@ function gameOver() {
         }
     }
     
+    // 更新分数显示
     finalScoreDisplay.textContent = score;
-    if (highscoreValueDisplay) highscoreValueDisplay.textContent = highScore;
+    if (highscoreValueDisplay) {
+        highscoreValueDisplay.textContent = highScore;
+    }
     
     // 显示成就
     if (achievementsEarned.length > 0) {
         showAchievementSummary();
     }
+    
+    // 显示游戏结束屏幕
+    gameOverScreen.style.display = 'flex';
+    console.log('游戏结束屏幕已显示');
+    
+    // 确保显示
+    setTimeout(() => {
+        if (gameOverScreen.style.display !== 'flex') {
+            gameOverScreen.style.display = 'flex';
+            console.log('游戏结束屏幕显示 (通过安全检查)');
+        }
+    }, 500);
+    
+    // 另一个保险措施
+    setTimeout(() => {
+        explosionParticles = [];
+        isGameOverAnimating = false;
+        if (gameOverScreen.style.display !== 'flex') {
+            gameOverScreen.style.display = 'flex';
+            console.log('游戏结束屏幕显示 (通过备份措施)');
+        }
+    }, 2000);
 }
 
 function togglePause() {
-    if (isGameOverAnimating || gameOverScreen.style.display === 'flex' || startScreen.style.display === 'flex') return;
+    if (isGameOverAnimating) return; // Don't allow pause during game over animation
+    if (gameOverScreen.style.display === 'flex' || startScreen.style.display === 'flex') return;
     isPaused = !isPaused;
     if (isPaused) {
         pauseScreen.style.display = 'flex';
@@ -691,8 +760,10 @@ function showFloatingScore(text, x, y, color = '#fff') {
 }
 
 function handleDirectionChange(newDx, newDy, buttonElement = null) {
-    if (changingDirection || isPaused || isGameOverAnimating || startScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex') return;
+    if (changingDirection) return;
     if ((dx === -newDx && dx !== 0) || (dy === -newDy && dy !== 0)) return;
+    if (isPaused || isGameOverAnimating) return;
+    if (startScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex') return;
     changingDirection = true;
     dx = newDx;
     dy = newDy;
@@ -710,6 +781,7 @@ document.addEventListener('keydown', e => {
         return;
     }
     
+    // 空格键重新开始游戏
     if (key === ' ' && gameOverScreen.style.display === 'flex') {
         console.log('空格键重新开始游戏');
         gameOverScreen.style.display = 'none';
@@ -718,17 +790,19 @@ document.addEventListener('keydown', e => {
     }
     
     let targetButton = null;
-    if (key === 'arrowup' || key === 'w') { handleDirectionChange(0, -1, btnUp); targetButton = btnUp; }
-    else if (key === 'arrowdown' || key === 's') { handleDirectionChange(0, 1, btnDown); targetButton = btnDown; }
-    else if (key === 'arrowleft' || key === 'a') { handleDirectionChange(-1, 0, btnLeft); targetButton = btnLeft; }
-    else if (key === 'arrowright' || key === 'd') { handleDirectionChange(1, 0, btnRight); targetButton = btnRight; }
+    if (key === 'arrowup' || key === 'w') { handleDirectionChange(0, -1); targetButton = btnUp; }
+    else if (key === 'arrowdown' || key === 's') { handleDirectionChange(0, 1); targetButton = btnDown; }
+    else if (key === 'arrowleft' || key === 'a') { handleDirectionChange(-1, 0); targetButton = btnLeft; }
+    else if (key === 'arrowright' || key === 'd') { handleDirectionChange(1, 0); targetButton = btnRight; }
 
-    if (targetButton && targetButton.offsetParent !== null) {
+    // Simulate button press feedback for keyboard
+    if (targetButton && targetButton.offsetParent !== null) { // Check if button is visible
         targetButton.classList.add('active-feedback');
         setTimeout(() => targetButton.classList.remove('active-feedback'), 100);
     }
 });
 
+// Mobile controls listeners with feedback
 [btnUp, btnDown, btnLeft, btnRight].forEach(btn => {
     if (btn) {
         btn.addEventListener('touchstart', (e) => {
@@ -741,6 +815,7 @@ document.addEventListener('keydown', e => {
             handleDirectionChange(newDx, newDy, btn);
         });
         
+        // 添加click事件作为备选，提升兼容性
         btn.addEventListener('click', (e) => {
             let newDx = 0, newDy = 0;
             if (btn === btnUp) newDy = -1;
@@ -767,17 +842,39 @@ if (toggleMusicButton) {
     });
 }
 
+// 为开始按钮添加事件监听
 startButton.addEventListener('click', () => {
     startScreen.style.display = 'none';
     initGame();
 });
 
-restartButton.addEventListener('click', () => {
-    console.log('重新开始按钮被点击');
-    gameOverScreen.style.display = 'none';
-    initGame();
-}, { once: false });
+// 为重新开始按钮添加事件监听
+if (restartButton) {
+    const newRestartButton = restartButton.cloneNode(true);
+    if (restartButton.parentNode) {
+        restartButton.parentNode.replaceChild(newRestartButton, restartButton);
+    }
+    
+    newRestartButton.addEventListener('click', function() {
+        console.log('重新开始按钮被点击');
+        gameOverScreen.style.display = 'none';
+        initGame();
+    });
+    
+    // 更新引用
+    restartButton = newRestartButton;
+}
 
+// 添加空格键重新开始游戏
+document.addEventListener('keydown', function(e) {
+    if (e.key === ' ' && gameOverScreen.style.display === 'flex') {
+        console.log('空格键: 重新开始游戏');
+        gameOverScreen.style.display = 'none';
+        initGame();
+    }
+});
+
+// 修改加载高分部分，使用try-catch提高健壮性
 try {
     const savedHighScore = localStorage.getItem('snakeHighScore');
     if (savedHighScore) {
@@ -792,9 +889,11 @@ try {
     console.error('读取最高分失败:', e);
 }
 
+// 初始显示开始界面
 resizeCanvas();
 startScreen.style.display = 'flex';
 
+// 添加触摸屏幕暂停功能
 gameBoard.addEventListener('click', function(e) {
     if (!isPaused && !isGameOverAnimating && 
         startScreen.style.display !== 'flex' && 
@@ -803,8 +902,12 @@ gameBoard.addEventListener('click', function(e) {
     }
 });
 
+window.addEventListener('resize', resizeCanvas);
+
+// 检查成就
 function checkAchievements() {
     achievements.forEach(achievement => {
+        // 跳过已获得的成就
         if (achievementsEarned.includes(achievement.id)) return;
         
         let isEarned = false;
@@ -826,6 +929,7 @@ function checkAchievements() {
     });
 }
 
+// 显示成就通知
 function showAchievementNotification(achievement) {
     const notification = document.createElement('div');
     notification.classList.add('achievement-notification');
@@ -839,10 +943,12 @@ function showAchievementNotification(achievement) {
     
     document.body.appendChild(notification);
     
+    // 动画显示
     setTimeout(() => {
         notification.classList.add('show');
     }, 100);
     
+    // 3秒后隐藏
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
@@ -853,6 +959,7 @@ function showAchievementNotification(achievement) {
     }, 3000);
 }
 
+// 显示成就总结
 function showAchievementSummary() {
     let earnedDetails = '';
     achievementsEarned.forEach(id => {
@@ -862,6 +969,7 @@ function showAchievementSummary() {
         }
     });
     
+    // 在游戏结束屏幕上添加成就信息
     const summaryElement = document.createElement('div');
     summaryElement.classList.add('achievements-summary');
     summaryElement.innerHTML = `
@@ -869,10 +977,12 @@ function showAchievementSummary() {
         ${earnedDetails || '<p>本局没有新成就</p>'}
     `;
     
+    // 检查是否已有成就总结，如果有则替换，否则添加
     const existingSummary = gameOverScreen.querySelector('.achievements-summary');
     if (existingSummary) {
         existingSummary.parentElement.replaceChild(summaryElement, existingSummary);
     } else {
+        // 将新的成就总结插入到重新开始按钮之前
         const restartButton = gameOverScreen.querySelector('#restart-button');
         if (restartButton) {
             gameOverScreen.insertBefore(summaryElement, restartButton);
@@ -882,13 +992,17 @@ function showAchievementSummary() {
     }
 }
 
+// 重置当前游戏的成就记录
 function resetGameAchievements() {
     achievementsEarned = [];
 }
 
+// 音效处理函数
 function playSound(sound) {
     if (sound && typeof sound.play === 'function') {
+        // 重置音频以确保可以再次播放
         if (sound.currentTime) sound.currentTime = 0;
+        // 播放音效
         const playPromise = sound.play();
         if (playPromise !== undefined) {
             playPromise.catch(e => {
