@@ -13,6 +13,7 @@ const restartButton = document.getElementById('restart-button');
 const difficultySelect = document.getElementById('difficulty');
 const toggleMusicButton = document.getElementById('toggle-music-button');
 const backgroundMusic = document.getElementById('background-music');
+const highscoreValueDisplay = document.getElementById('highscore-value');
 
 const btnUp = document.getElementById('btn-up');
 const btnDown = document.getElementById('btn-down');
@@ -49,6 +50,7 @@ let currentLevel = 1;
 let particles = [];
 let explosionParticles = [];
 let isGameOverAnimating = false;
+let achievementsEarned = [];
 
 const offscreenCanvas = document.createElement('canvas');
 const offscreenCtx = offscreenCanvas.getContext('2d');
@@ -71,6 +73,36 @@ const levelConfig = [
 ];
 
 let currentConfig;
+
+// 成就系统
+const achievements = [
+    { id: 'beginner', name: '初学者', description: '获得第一个积分', threshold: 1, icon: '🍎' },
+    { id: 'snake_hunter', name: '蛇猎人', description: '达到10分', threshold: 10, icon: '🏆' },
+    { id: 'snake_master', name: '蛇大师', description: '达到25分', threshold: 25, icon: '👑' },
+    { id: 'snake_king', name: '蛇王', description: '达到50分', threshold: 50, icon: '🌟' },
+    { id: 'bonus_collector', name: '奖励收集者', description: '吃到3个奖励食物', bonusCount: 3, icon: '💎' },
+    { id: 'speed_demon', name: '速度恶魔', description: '在困难模式下获得15分', threshold: 15, difficulty: 'hard', icon: '🔥' }
+];
+
+let stats = {
+    gamesPlayed: 0,
+    totalScore: 0,
+    bonusFoodEaten: 0,
+    sessionBest: 0
+};
+
+// 尝试从localStorage加载统计数据
+try {
+    const savedStats = localStorage.getItem('snakeStats');
+    if (savedStats) {
+        const parsedStats = JSON.parse(savedStats);
+        if (parsedStats && typeof parsedStats === 'object') {
+            stats = {...stats, ...parsedStats};
+        }
+    }
+} catch(e) {
+    console.error('加载统计数据失败:', e);
+}
 
 function resizeCanvas() {
     try {
@@ -284,6 +316,7 @@ function loadLevel(level) {
 function initGame() {
     try {
         console.log('Initializing game...');
+        resetGameAchievements();
         snake = [
             { x: Math.floor(boardSize / 2), y: Math.floor(boardSize / 2) },
             { x: Math.floor(boardSize / 2) - 1, y: Math.floor(boardSize / 2) },
@@ -466,10 +499,14 @@ function eatFood(isBonus) {
         sounds.bonusEat.play();
         bonusFood = null;
         clearTimeout(bonusFoodTimer);
+        stats.bonusFoodEaten++;
+        checkAchievements();
     } else {
         score++;
         sounds.eat.play();
+        checkAchievements();
     }
+    
     scoreDisplay.textContent = score;
     snake.push({ ...snake[snake.length - 1] });
 
@@ -503,14 +540,46 @@ function gameOver() {
     clearTimeout(bonusFoodTimer);
     createExplosionParticles([...snake]); // Pass a copy of snake segments
     isGameOverAnimating = true; // Start animation loop
-    // The actual gameOverScreen display is deferred until animation ends
-
+    
+    // 更新统计数据
+    stats.gamesPlayed++;
+    stats.totalScore += score;
+    stats.sessionBest = Math.max(stats.sessionBest, score);
+    
+    try {
+        localStorage.setItem('snakeStats', JSON.stringify(stats));
+    } catch(e) {
+        console.error('保存统计数据失败:', e);
+    }
+    
+    // 更新最高分并立即保存
     if (score > highScore) {
         highScore = score;
         highScoreDisplay.textContent = highScore;
-        localStorage.setItem('snakeHighScore', highScore);
+        try {
+            localStorage.setItem('snakeHighScore', highScore);
+            console.log('最高分已保存:', highScore);
+        } catch (e) {
+            console.error('保存最高分失败:', e);
+        }
     }
+    
     finalScoreDisplay.textContent = score;
+    if (highscoreValueDisplay) highscoreValueDisplay.textContent = highScore;
+    
+    // 显示本次游戏成就
+    if (achievementsEarned.length > 0) {
+        showAchievementSummary();
+    }
+    
+    // 确保动画结束后显示游戏结束屏幕
+    setTimeout(() => {
+        if (isGameOverAnimating && explosionParticles.length === 0) {
+            isGameOverAnimating = false;
+            gameOverScreen.style.display = 'flex';
+            console.log('游戏结束屏幕已显示');
+        }
+    }, 1500); // 1.5秒后检查并强制显示结束屏幕
 }
 
 function togglePause() {
@@ -579,6 +648,15 @@ document.addEventListener('keydown', e => {
         togglePause();
         return;
     }
+    
+    // 空格键重新开始游戏
+    if (key === ' ' && gameOverScreen.style.display === 'flex') {
+        console.log('空格键重新开始游戏');
+        gameOverScreen.style.display = 'none';
+        initGame();
+        return;
+    }
+    
     let targetButton = null;
     if (key === 'arrowup' || key === 'w') { handleDirectionChange(0, -1); targetButton = btnUp; }
     else if (key === 'arrowdown' || key === 's') { handleDirectionChange(0, 1); targetButton = btnDown; }
@@ -640,17 +718,27 @@ startButton.addEventListener('click', () => {
 
 // 为重新开始按钮添加事件监听
 restartButton.addEventListener('click', () => {
+    console.log('重新开始按钮被点击');
     gameOverScreen.style.display = 'none';
     initGame();
-});
+}, { once: false });
 
-// 加载高分
-const savedHighScore = localStorage.getItem('snakeHighScore');
-if (savedHighScore) {
-    highScore = parseInt(savedHighScore);
-    highScoreDisplay.textContent = highScore;
+// 修改加载高分部分，使用try-catch提高健壮性
+try {
+    const savedHighScore = localStorage.getItem('snakeHighScore');
+    if (savedHighScore) {
+        highScore = parseInt(savedHighScore);
+        if (!isNaN(highScore)) {
+            highScoreDisplay.textContent = highScore;
+            if (highscoreValueDisplay) highscoreValueDisplay.textContent = highScore;
+            console.log('已加载最高分:', highScore);
+        }
+    }
+} catch (e) {
+    console.error('读取最高分失败:', e);
 }
 
+// 初始显示开始界面
 resizeCanvas();
 startScreen.style.display = 'flex';
 
@@ -664,3 +752,96 @@ gameBoard.addEventListener('click', function(e) {
 });
 
 window.addEventListener('resize', resizeCanvas);
+
+// 检查成就
+function checkAchievements() {
+    achievements.forEach(achievement => {
+        // 跳过已获得的成就
+        if (achievementsEarned.includes(achievement.id)) return;
+        
+        let isEarned = false;
+        
+        if (achievement.threshold && score >= achievement.threshold) {
+            if (!achievement.difficulty || achievement.difficulty === difficultySelect.value) {
+                isEarned = true;
+            }
+        }
+        
+        if (achievement.bonusCount && stats.bonusFoodEaten >= achievement.bonusCount) {
+            isEarned = true;
+        }
+        
+        if (isEarned) {
+            achievementsEarned.push(achievement.id);
+            showAchievementNotification(achievement);
+        }
+    });
+}
+
+// 显示成就通知
+function showAchievementNotification(achievement) {
+    const notification = document.createElement('div');
+    notification.classList.add('achievement-notification');
+    notification.innerHTML = `
+        <div class="achievement-icon">${achievement.icon}</div>
+        <div class="achievement-content">
+            <div class="achievement-title">成就解锁: ${achievement.name}</div>
+            <div class="achievement-description">${achievement.description}</div>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // 动画显示
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    // 3秒后隐藏
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.parentElement.removeChild(notification);
+            }
+        }, 500);
+    }, 3000);
+}
+
+// 显示成就总结
+function showAchievementSummary() {
+    let earnedDetails = '';
+    achievementsEarned.forEach(id => {
+        const achievement = achievements.find(a => a.id === id);
+        if (achievement) {
+            earnedDetails += `<div class="earned-achievement">${achievement.icon} ${achievement.name}</div>`;
+        }
+    });
+    
+    // 在游戏结束屏幕上添加成就信息
+    const summaryElement = document.createElement('div');
+    summaryElement.classList.add('achievements-summary');
+    summaryElement.innerHTML = `
+        <h3>获得的成就</h3>
+        ${earnedDetails || '<p>本局没有新成就</p>'}
+    `;
+    
+    // 检查是否已有成就总结，如果有则替换，否则添加
+    const existingSummary = gameOverScreen.querySelector('.achievements-summary');
+    if (existingSummary) {
+        existingSummary.parentElement.replaceChild(summaryElement, existingSummary);
+    } else {
+        // 将新的成就总结插入到重新开始按钮之前
+        const restartButton = gameOverScreen.querySelector('#restart-button');
+        if (restartButton) {
+            gameOverScreen.insertBefore(summaryElement, restartButton);
+        } else {
+            gameOverScreen.appendChild(summaryElement);
+        }
+    }
+}
+
+// 重置当前游戏的成就记录
+function resetGameAchievements() {
+    achievementsEarned = [];
+}
