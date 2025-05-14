@@ -40,8 +40,8 @@ let snake;
 let food;
 let bonusFood = null;
 let obstacles = [];
-let dx;
-let dy;
+let dx = 1; // 初始化 dx，确保眼睛绘制有方向
+let dy = 0; // 初始化 dy
 let score;
 let highScore = localStorage.getItem('snakeHighScore') || 0;
 highScoreDisplay.textContent = highScore;
@@ -303,14 +303,20 @@ function updateAndDrawExplosion(context) {
         }
     }
     
-    // 如果爆炸动画结束且游戏结束屏幕未显示，则显示游戏结束屏幕
-    if (explosionParticles.length === 0 && isGameOverAnimating && gameOverScreen.style.display !== 'flex') {
+    // 当爆炸动画结束，显示游戏结束屏幕
+    if (explosionParticles.length === 0 && isGameOverAnimating) {
         isGameOverAnimating = false;
-        gameOverScreen.style.display = 'flex';
-        console.log('爆炸动画结束: 游戏结束屏幕已显示');
+        showGameOverScreen();
     }
     
     return explosionParticles.length > 0;
+}
+
+function showGameOverScreen() {
+    startScreen.style.display = 'none';
+    pauseScreen.style.display = 'none';
+    gameOverScreen.style.display = 'flex';
+    console.log('游戏结束屏幕已显示');
 }
 
 function hexToRgb(hex) {
@@ -353,7 +359,7 @@ function drawGame(timestamp) {
                 color = '#27ae60'; // 蛇尾颜色
             } else {
                 // 身体部分使用渐变色，从亮到暗
-                const ratio = 1 - (index / snake.length);
+                const ratio = 1 - (index / (snake.length - 1));
                 const r = Math.round(46 + (46 * ratio));
                 const g = Math.round(204 + (17 * ratio));
                 const b = Math.round(113 + (-17 * ratio));
@@ -403,14 +409,15 @@ function initGame() {
         clearTimeout(bonusFoodTimer);
         particles = [];
         explosionParticles = [];
+        startScreen.style.display = 'none';
         pauseScreen.style.display = 'none';
         gameOverScreen.style.display = 'none';
-        startScreen.style.display = 'none';
         spawnFood();
         lastTime = 0;
         if (isMusicPlaying && sounds.backgroundMusic.play) {
             sounds.backgroundMusic.play().catch(e => console.error('Music play error:', e));
         }
+        resizeCanvas(); // 确保画布尺寸正确
         requestAnimationFrame(gameLoop);
     } catch (error) {
         console.error('Error in initGame:', error);
@@ -447,11 +454,7 @@ function gameLoop(timestamp) {
 
         if (isGameOverAnimating) {
             drawGame(timestamp);
-            if (!updateAndDrawExplosion(ctx)) {
-                isGameOverAnimating = false;
-                gameOverScreen.style.display = 'flex';
-                console.log('游戏循环: 游戏结束屏幕已显示');
-            }
+            updateAndDrawExplosion(ctx); // 动画结束后由 updateAndDrawExplosion 处理显示
             requestAnimationFrame(gameLoop);
             return;
         }
@@ -480,11 +483,7 @@ function gameLoop(timestamp) {
         requestAnimationFrame(gameLoop);
     } catch (error) {
         console.error('Error in gameLoop:', error);
-        // 出错时也确保显示游戏结束屏幕
-        if (checkCollision()) {
-            isGameOverAnimating = false;
-            gameOverScreen.style.display = 'flex';
-        }
+        showGameOverScreen();
     }
 }
 
@@ -612,8 +611,8 @@ function gameOver() {
     playSound(sounds.gameOver);
     if (sounds.backgroundMusic.pause) sounds.backgroundMusic.pause();
     clearTimeout(bonusFoodTimer);
-    createExplosionParticles([...snake]); // Pass a copy of snake segments
-    isGameOverAnimating = true; // Start animation loop
+    createExplosionParticles([...snake]);
+    isGameOverAnimating = true;
     
     // 更新统计数据
     stats.gamesPlayed++;
@@ -626,7 +625,7 @@ function gameOver() {
         console.error('保存统计数据失败:', e);
     }
     
-    // 更新最高分并立即保存
+    // 更新最高分
     if (score > highScore) {
         highScore = score;
         highScoreDisplay.textContent = highScore;
@@ -641,33 +640,14 @@ function gameOver() {
     finalScoreDisplay.textContent = score;
     if (highscoreValueDisplay) highscoreValueDisplay.textContent = highScore;
     
-    // 显示本次游戏成就
+    // 显示成就
     if (achievementsEarned.length > 0) {
         showAchievementSummary();
     }
-    
-    // 确保动画结束后显示游戏结束屏幕
-    setTimeout(() => {
-        if (isGameOverAnimating) {
-            isGameOverAnimating = false;
-            gameOverScreen.style.display = 'flex';
-            console.log('游戏结束屏幕已显示');
-        }
-    }, 1500); // 1.5秒后强制显示结束屏幕，无论爆炸动画是否完成
-    
-    // 强制设置一个备份定时器，确保无论如何都会显示游戏结束界面
-    setTimeout(() => {
-        if (gameOverScreen.style.display !== 'flex') {
-            isGameOverAnimating = false;
-            gameOverScreen.style.display = 'flex';
-            console.log('备份定时器：游戏结束屏幕已显示');
-        }
-    }, 2500);
 }
 
 function togglePause() {
-    if (isGameOverAnimating) return; // Don't allow pause during game over animation
-    if (gameOverScreen.style.display === 'flex' || startScreen.style.display === 'flex') return;
+    if (isGameOverAnimating || gameOverScreen.style.display === 'flex' || startScreen.style.display === 'flex') return;
     isPaused = !isPaused;
     if (isPaused) {
         pauseScreen.style.display = 'flex';
@@ -711,10 +691,8 @@ function showFloatingScore(text, x, y, color = '#fff') {
 }
 
 function handleDirectionChange(newDx, newDy, buttonElement = null) {
-    if (changingDirection) return;
+    if (changingDirection || isPaused || isGameOverAnimating || startScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex') return;
     if ((dx === -newDx && dx !== 0) || (dy === -newDy && dy !== 0)) return;
-    if (isPaused || isGameOverAnimating) return;
-    if (startScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex') return;
     changingDirection = true;
     dx = newDx;
     dy = newDy;
@@ -732,7 +710,6 @@ document.addEventListener('keydown', e => {
         return;
     }
     
-    // 空格键重新开始游戏
     if (key === ' ' && gameOverScreen.style.display === 'flex') {
         console.log('空格键重新开始游戏');
         gameOverScreen.style.display = 'none';
@@ -741,19 +718,17 @@ document.addEventListener('keydown', e => {
     }
     
     let targetButton = null;
-    if (key === 'arrowup' || key === 'w') { handleDirectionChange(0, -1); targetButton = btnUp; }
-    else if (key === 'arrowdown' || key === 's') { handleDirectionChange(0, 1); targetButton = btnDown; }
-    else if (key === 'arrowleft' || key === 'a') { handleDirectionChange(-1, 0); targetButton = btnLeft; }
-    else if (key === 'arrowright' || key === 'd') { handleDirectionChange(1, 0); targetButton = btnRight; }
+    if (key === 'arrowup' || key === 'w') { handleDirectionChange(0, -1, btnUp); targetButton = btnUp; }
+    else if (key === 'arrowdown' || key === 's') { handleDirectionChange(0, 1, btnDown); targetButton = btnDown; }
+    else if (key === 'arrowleft' || key === 'a') { handleDirectionChange(-1, 0, btnLeft); targetButton = btnLeft; }
+    else if (key === 'arrowright' || key === 'd') { handleDirectionChange(1, 0, btnRight); targetButton = btnRight; }
 
-    // Simulate button press feedback for keyboard
-    if (targetButton && targetButton.offsetParent !== null) { // Check if button is visible
+    if (targetButton && targetButton.offsetParent !== null) {
         targetButton.classList.add('active-feedback');
         setTimeout(() => targetButton.classList.remove('active-feedback'), 100);
     }
 });
 
-// Mobile controls listeners with feedback
 [btnUp, btnDown, btnLeft, btnRight].forEach(btn => {
     if (btn) {
         btn.addEventListener('touchstart', (e) => {
@@ -766,7 +741,6 @@ document.addEventListener('keydown', e => {
             handleDirectionChange(newDx, newDy, btn);
         });
         
-        // 添加click事件作为备选，提升兼容性
         btn.addEventListener('click', (e) => {
             let newDx = 0, newDy = 0;
             if (btn === btnUp) newDy = -1;
@@ -793,20 +767,17 @@ if (toggleMusicButton) {
     });
 }
 
-// 为开始按钮添加事件监听
 startButton.addEventListener('click', () => {
     startScreen.style.display = 'none';
     initGame();
 });
 
-// 为重新开始按钮添加事件监听
 restartButton.addEventListener('click', () => {
     console.log('重新开始按钮被点击');
     gameOverScreen.style.display = 'none';
     initGame();
 }, { once: false });
 
-// 修改加载高分部分，使用try-catch提高健壮性
 try {
     const savedHighScore = localStorage.getItem('snakeHighScore');
     if (savedHighScore) {
@@ -821,11 +792,9 @@ try {
     console.error('读取最高分失败:', e);
 }
 
-// 初始显示开始界面
 resizeCanvas();
 startScreen.style.display = 'flex';
 
-// 添加触摸屏幕暂停功能
 gameBoard.addEventListener('click', function(e) {
     if (!isPaused && !isGameOverAnimating && 
         startScreen.style.display !== 'flex' && 
@@ -834,12 +803,8 @@ gameBoard.addEventListener('click', function(e) {
     }
 });
 
-window.addEventListener('resize', resizeCanvas);
-
-// 检查成就
 function checkAchievements() {
     achievements.forEach(achievement => {
-        // 跳过已获得的成就
         if (achievementsEarned.includes(achievement.id)) return;
         
         let isEarned = false;
@@ -861,7 +826,6 @@ function checkAchievements() {
     });
 }
 
-// 显示成就通知
 function showAchievementNotification(achievement) {
     const notification = document.createElement('div');
     notification.classList.add('achievement-notification');
@@ -875,12 +839,10 @@ function showAchievementNotification(achievement) {
     
     document.body.appendChild(notification);
     
-    // 动画显示
     setTimeout(() => {
         notification.classList.add('show');
     }, 100);
     
-    // 3秒后隐藏
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
@@ -891,7 +853,6 @@ function showAchievementNotification(achievement) {
     }, 3000);
 }
 
-// 显示成就总结
 function showAchievementSummary() {
     let earnedDetails = '';
     achievementsEarned.forEach(id => {
@@ -901,7 +862,6 @@ function showAchievementSummary() {
         }
     });
     
-    // 在游戏结束屏幕上添加成就信息
     const summaryElement = document.createElement('div');
     summaryElement.classList.add('achievements-summary');
     summaryElement.innerHTML = `
@@ -909,12 +869,10 @@ function showAchievementSummary() {
         ${earnedDetails || '<p>本局没有新成就</p>'}
     `;
     
-    // 检查是否已有成就总结，如果有则替换，否则添加
     const existingSummary = gameOverScreen.querySelector('.achievements-summary');
     if (existingSummary) {
         existingSummary.parentElement.replaceChild(summaryElement, existingSummary);
     } else {
-        // 将新的成就总结插入到重新开始按钮之前
         const restartButton = gameOverScreen.querySelector('#restart-button');
         if (restartButton) {
             gameOverScreen.insertBefore(summaryElement, restartButton);
@@ -924,17 +882,13 @@ function showAchievementSummary() {
     }
 }
 
-// 重置当前游戏的成就记录
 function resetGameAchievements() {
     achievementsEarned = [];
 }
 
-// 音效处理函数
 function playSound(sound) {
     if (sound && typeof sound.play === 'function') {
-        // 重置音频以确保可以再次播放
         if (sound.currentTime) sound.currentTime = 0;
-        // 播放音效
         const playPromise = sound.play();
         if (playPromise !== undefined) {
             playPromise.catch(e => {

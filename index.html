@@ -1,11 +1,50 @@
-<!DOCTYPE html>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>贪吃蛇大作战</title>
     <link rel="stylesheet" href="snake.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="snake.js" defer></script>
 </head>
 <body>
     <div class="container">
@@ -21,6 +60,7 @@
 
         <div class="game-board-container">
             <canvas id="game-board"></canvas>
+
             <div id="start-screen" class="overlay">
                 <h2>经典贪吃蛇</h2>
                 <p>使用方向键或WASD键控制方向</p>
@@ -34,16 +74,16 @@
                     </select>
                 </div>
             </div>
-            <div id="game-over-screen" class="overlay" style="display: none;">
+
+            <div id="game-over-screen" class="overlay">
                 <h2>游戏结束!</h2>
                 <p>你的得分: <span id="final-score">0</span></p>
-                <p class="highscore-message">最高记录: <span id="highscore-value">0</span></p>
-                <button id="restart-button">
-                    <i class="fas fa-redo-alt"></i> 重新开始
-                </button>
+                <p>最高记录: <span id="highscore-value">0</span></p>
+                <button id="restart-button">重新开始</button>
                 <p class="game-over-tip">按空格键快速重新开始</p>
             </div>
-            <div id="pause-screen" class="overlay" style="display: none;">
+
+            <div id="pause-screen" class="overlay">
                 <h2>游戏暂停</h2>
                 <p>按 P 键继续游戏</p>
             </div>
@@ -65,35 +105,29 @@
         </div>
 
         <footer>
-            <p>© 2025 贪吃蛇游戏</p>
+            © 2025 贪吃蛇游戏
         </footer>
     </div>
 
     <audio id="background-music" loop>
-        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+        <source src="./sounds/background.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
-    
-    <audio id="eat-sound" preload="auto">
-        <source src="https://assets.mixkit.co/active_storage/sfx/212/212-preview.mp3" type="audio/mpeg">
+    <audio id="eat-sound">
+        <source src="./sounds/eat.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
-    
-    <audio id="bonus-sound" preload="auto">
-        <source src="https://assets.mixkit.co/active_storage/sfx/270/270-preview.mp3" type="audio/mpeg">
+    <audio id="bonus-sound">
+        <source src="./sounds/bonus.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
-    
-    <audio id="game-over-sound" preload="auto">
-        <source src="https://assets.mixkit.co/active_storage/sfx/218/218-preview.mp3" type="audio/mpeg">
+    <audio id="game-over-sound">
+        <source src="./sounds/gameover.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
-    
-    <audio id="level-up-sound" preload="auto">
-        <source src="https://assets.mixkit.co/active_storage/sfx/217/217-preview.mp3" type="audio/mpeg">
+    <audio id="level-up-sound">
+        <source src="./sounds/levelup.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
-
-    <script src="snake.js" defer></script>
 </body>
 </html>
