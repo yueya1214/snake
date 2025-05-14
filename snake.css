@@ -7,7 +7,7 @@ body {
     margin: 0;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #fff;
-    overflow: hidden; /* 防止滚动条出现 */
+    overflow: hidden;
 }
 
 .container {
@@ -36,19 +36,17 @@ header h1 {
 }
 
 .game-board-container {
-    position: relative; /* 用于覆盖层定位 */
+    position: relative;
     width: 100%;
-    /* 高度会由JS根据canvas调整，或者可以设置一个固定的比例 */
     margin: 0 auto;
     border: 5px solid rgba(255,255,255,0.3);
     border-radius: 10px;
-    overflow: hidden; /* 保证canvas在容器内 */
+    overflow: hidden;
 }
 
 canvas#game-board {
-    display: block; /* 移除canvas下方的空隙 */
-    background-color: #2c3e50; /* 深色背景以突出蛇和食物 */
-    /* 宽度和高度将由JS设置 */
+    display: block;
+    background-color: #2c3e50;
 }
 
 .overlay {
@@ -65,6 +63,7 @@ canvas#game-board {
     color: #fff;
     padding: 20px;
     box-sizing: border-box;
+    z-index: 10;
 }
 
 .overlay h2 {
@@ -87,6 +86,7 @@ canvas#game-board {
     cursor: pointer;
     transition: background-color 0.3s, transform 0.2s;
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    z-index: 11;
 }
 
 .overlay button:hover {
@@ -128,10 +128,9 @@ footer {
     color: rgba(255,255,255,0.7);
 }
 
-/* 移动端控制按钮样式 */
 .mobile-controls {
     margin-top: 15px;
-    display: none; /* 默认隐藏，在小屏幕上显示 */
+    display: none;
     flex-direction: column;
     align-items: center;
 }
@@ -152,7 +151,8 @@ footer {
     transition: background-color 0.2s, transform 0.1s;
 }
 
-.mobile-controls button:active {
+.mobile-controls button:active,
+.mobile-controls button.active-feedback {
     background-color: rgba(255, 255, 255, 0.4);
     transform: scale(0.95);
 }
@@ -162,13 +162,55 @@ footer {
     justify-content: center;
 }
 
-/* 障碍物颜色 (如果用canvas绘制，主要在JS中定义颜色) */
 .obstacle-color {
-    background-color: #8e44ad; /* 紫色障碍物 */
+    background-color: #8e44ad;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) { /* 调整断点以更好地适应平板和手机 */
+.floating-score {
+    position: absolute*.
+    font-size: 1em;
+    font-weight: bold;
+    color: white;
+    opacity: 1;
+    transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+    pointer-events: none;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    z-index: 12;
+}
+
+.explosion-particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 1;
+    transition: transform 0.5s cubic-bezier(0.1, 0.5, 0.5, 1), opacity 0.5s linear;
+    z-index: 12;
+}
+
+.game-control-button {
+    background-color: rgba(0,0,0,0.3);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.4);
+    padding: 8px 15px;
+    font-size: 0.9em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    margin-top: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    z-index: 11;
+}
+
+.game-control-button:hover {
+    background-color: rgba(0,0,0,0.4);
+    transform: translateY(-1px);
+}
+
+.game-control-button i {
+    margin-right: 5px;
+}
+
+@media (max-width: 768px) {
     .container {
         padding: 15px;
         width: 98%;
@@ -192,10 +234,10 @@ footer {
         font-size: 1em;
     }
     .controls p {
-        display: none; /* 在小屏幕隐藏键盘提示 */
+        display: none;
     }
     .mobile-controls {
-        display: flex; /* 在小屏幕显示移动控制 */
+        display: flex;
     }
 }
 
@@ -213,52 +255,3 @@ footer {
         font-size: 0.9em;
     }
 }
-
-.game-control-button {
-    background-color: rgba(0,0,0,0.3);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.4);
-    padding: 8px 15px;
-    font-size: 0.9em;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s, transform 0.2s;
-    margin-top: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.game-control-button:hover {
-    background-color: rgba(0,0,0,0.4);
-    transform: translateY(-1px);
-}
-
-.game-control-button i {
-    margin-right: 5px;
-}
-
-.mobile-controls button:active,
-.mobile-controls button.active-feedback {
-    background-color: rgba(255, 255, 255, 0.4);
-    transform: scale(0.95);
-}
-
-/* 浮动分数样式 */
-.floating-score {
-    position: absolute;
-    font-size: 1em;
-    font-weight: bold;
-    color: white;
-    opacity: 1;
-    transition: transform 0.5s ease-out, opacity 0.5s ease-out;
-    pointer-events: none; /* 防止干扰点击 */
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-}
-
-/* 游戏结束粒子 (如果用 DOM 元素实现) */
-.explosion-particle {
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-    opacity: 1;
-    transition: transform 0.5s cubic-bezier(0.1, 0.5, 0.5, 1), opacity 0.5s linear;
-} 

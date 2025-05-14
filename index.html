@@ -1,10 +1,50 @@
-<!DOCTYPE html>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>贪吃蛇大作战</title>
     <link rel="stylesheet" href="snake.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
     <div class="container">
@@ -13,7 +53,9 @@
             <div class="score-board">
                 得分: <span id="score">0</span> | 最高分: <span id="high-score">0</span> | 等级: <span id="level">1</span>
             </div>
-            <button id="toggle-music-button" class="game-control-button"><i class="fas fa-music"></i> 背景音乐: 开</button>
+            <button id="toggle-music-button" class="game-control-button">
+                <i class="fas fa-music"></i> 背景音乐: 开
+            </button>
         </header>
 
         <div class="game-board-container">
@@ -36,32 +78,37 @@
                 <p>你的得分: <span id="final-score">0</span></p>
                 <button id="restart-button">重新开始</button>
             </div>
-             <div id="pause-screen" class="overlay" style="display: none;">
+            <div id="pause-screen" class="overlay" style="display: none;">
                 <h2>游戏暂停</h2>
-                <p>按 P键 继续游戏</p>
+                <p>按 P 键继续游戏</p>
             </div>
         </div>
 
         <div class="controls">
-            <p><strong>控制:</strong> 方向键 / WASD</p>
-            <p><strong>暂停/继续:</strong> P键</p>
+            <p>控制: 方向键 / WASD</p>
+            <p>暂停/继续: P 键</p>
             <div class="mobile-controls">
-                <button id="btn-up"><i class="fas fa-arrow-up"></i></button>
                 <div>
-                    <button id="btn-left"><i class="fas fa-arrow-left"></i></button>
-                    <button id="btn-down"><i class="fas fa-arrow-down"></i></button>
-                    <button id="btn-right"><i class="fas fa-arrow-right"></i></button>
+                    <button id="btn-up">↑</button>
+                </div>
+                <div>
+                    <button id="btn-left">←</button>
+                    <button id="btn-down">↓</button>
+                    <button id="btn-right">→</button>
                 </div>
             </div>
         </div>
 
         <footer>
-            <p>&copy; 2025 贪吃蛇游戏. </p>
+            <p>© 2025 贪吃蛇游戏</p>
         </footer>
     </div>
 
-    <script src="snake.js"></script>
-    <!-- Font Awesome for icons -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
+    <audio id="background-music" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script src="snake.js" defer></script>
 </body>
-</html> 
+</html>
