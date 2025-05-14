@@ -1,0 +1,412 @@
+body {
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    overflow: hidden;
+}
+
+.container {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    width: 90%;
+    max-width: 600px;
+}
+
+header h1 {
+    font-size: 2.8em;
+    margin-bottom: 10px;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.score-board {
+    font-size: 1.2em;
+    margin-bottom: 20px;
+    background-color: rgba(0,0,0,0.2);
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.game-board-container {
+    position: relative;
+    width: 100%;
+    margin: 0 auto;
+    border: 5px solid rgba(255,255,255,0.3);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+canvas#game-board {
+    display: block;
+    background-color: #2c3e50;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    padding: 20px;
+    box-sizing: border-box;
+    z-index: 10;
+}
+
+.overlay h2 {
+    font-size: 2.5em;
+    margin-bottom: 15px;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    animation: pulse 1.5s infinite alternate;
+}
+
+@keyframes pulse {
+    from { transform: scale(1); text-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
+    to { transform: scale(1.05); text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
+}
+
+#game-over-screen {
+    z-index: 20; /* 确保游戏结束屏幕在最顶层 */
+}
+
+#game-over-screen h2 {
+    color: #ff5252;
+}
+
+#final-score {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #ffeb3b;
+    margin: 0 5px;
+}
+
+.highscore-message {
+    font-size: 1.2em;
+    color: #4caf50;
+    margin-bottom: 15px;
+}
+
+#highscore-value {
+    font-weight: bold;
+    color: #8bc34a;
+}
+
+.game-over-tip {
+    font-size: 0.9em;
+    color: #bbb;
+    margin-top: 15px;
+    opacity: 0.8;
+}
+
+.overlay p {
+    font-size: 1.1em;
+    margin-bottom: 15px;
+}
+
+.overlay button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    z-index: 11;
+}
+
+#restart-button {
+    background-color: #2ecc71;
+    font-size: 1.3em;
+    padding: 18px 35px;
+    margin-top: 10px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+    animation: bounce 1s infinite alternate;
+}
+
+@keyframes bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-5px); }
+}
+
+.overlay button:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+}
+
+#restart-button:hover {
+    background-color: #27ae60;
+    transform: translateY(-4px) scale(1.05);
+}
+
+#restart-button:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.difficulty-selector {
+    margin-top: 20px;
+}
+
+.difficulty-selector label {
+    margin-right: 10px;
+    font-size: 1em;
+}
+
+.difficulty-selector select {
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 1em;
+    background-color: #fff;
+    color: #333;
+}
+
+.controls {
+    margin-top: 25px;
+    font-size: 0.9em;
+    color: rgba(255,255,255,0.8);
+}
+
+.controls p {
+    margin: 5px 0;
+}
+
+footer {
+    margin-top: 30px;
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.7);
+}
+
+.mobile-controls {
+    margin-top: 15px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+}
+
+.mobile-controls button {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 1.5em;
+    cursor: pointer;
+    margin: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.mobile-controls button:active,
+.mobile-controls button.active-feedback {
+    background-color: rgba(255, 255, 255, 0.4);
+    transform: scale(0.95);
+}
+
+.mobile-controls > div {
+    display: flex;
+    justify-content: center;
+}
+
+.obstacle-color {
+    background-color: #8e44ad;
+}
+
+.floating-score {
+    position: absolute;
+    font-size: 1em;
+    font-weight: bold;
+    color: white;
+    opacity: 1;
+    transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+    pointer-events: none;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    z-index: 12;
+}
+
+.explosion-particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 1;
+    transition: transform 0.5s cubic-bezier(0.1, 0.5, 0.5, 1), opacity 0.5s linear;
+    z-index: 12;
+}
+
+.game-control-button {
+    background-color: rgba(0,0,0,0.3);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.4);
+    padding: 8px 15px;
+    font-size: 0.9em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    margin-top: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    z-index: 11;
+}
+
+.game-control-button:hover {
+    background-color: rgba(0,0,0,0.4);
+    transform: translateY(-1px);
+}
+
+.game-control-button i {
+    margin-right: 5px;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+        width: 98%;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+    header h1 {
+        font-size: 2.2em;
+    }
+    .score-board {
+        font-size: 1em;
+        padding: 8px;
+    }
+    .overlay h2 {
+        font-size: 1.8em;
+    }
+    .overlay p {
+        font-size: 0.9em;
+    }
+    .overlay button {
+        padding: 10px 20px;
+        font-size: 1em;
+    }
+    .controls p {
+        display: none;
+    }
+    .mobile-controls {
+        display: flex;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.8em;
+    }
+    .mobile-controls button {
+        width: 50px;
+        height: 50px;
+        font-size: 1.3em;
+    }
+    .difficulty-selector label,
+    .difficulty-selector select {
+        font-size: 0.9em;
+    }
+}
+
+/* 成就系统样式 */
+.achievement-notification {
+    position: fixed;
+    top: -100px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 5px solid #ffeb3b;
+    display: flex;
+    align-items: center;
+    width: 300px;
+    max-width: 80vw;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 1000;
+    transition: transform 0.5s ease-out;
+    transform: translateY(-50px);
+}
+
+.achievement-notification.show {
+    transform: translateY(120px);
+}
+
+.achievement-icon {
+    font-size: 2em;
+    margin-right: 15px;
+    text-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+.achievement-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 5px;
+    color: #8bc34a;
+}
+
+.achievement-description {
+    font-size: 0.9em;
+    color: #ddd;
+}
+
+.achievements-summary {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: left;
+    border: 1px solid rgba(255,255,255,0.1);
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.achievements-summary h3 {
+    color: #ffeb3b;
+    font-size: 1.2em;
+    margin-top: 0;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.earned-achievement {
+    padding: 8px;
+    background: rgba(255,255,255,0.1);
+    margin-bottom: 5px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+}
+
+.earned-achievement:last-child {
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .achievement-notification {
+        width: 250px;
+        padding: 10px;
+    }
+    
+    .achievement-icon {
+        font-size: 1.5em;
+    }
+    
+    .achievements-summary {
+        max-width: 250px;
+    }
+}
