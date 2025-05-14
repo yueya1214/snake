@@ -15,6 +15,12 @@ const toggleMusicButton = document.getElementById('toggle-music-button');
 const backgroundMusic = document.getElementById('background-music');
 const highscoreValueDisplay = document.getElementById('highscore-value');
 
+// 获取音效元素
+const eatSound = document.getElementById('eat-sound');
+const bonusSound = document.getElementById('bonus-sound');
+const gameOverSound = document.getElementById('game-over-sound');
+const levelUpSound = document.getElementById('level-up-sound');
+
 const btnUp = document.getElementById('btn-up');
 const btnDown = document.getElementById('btn-down');
 const btnLeft = document.getElementById('btn-left');
@@ -22,10 +28,10 @@ const btnRight = document.getElementById('btn-right');
 
 const sounds = {
     backgroundMusic: backgroundMusic,
-    eat: { play: () => console.log('Play eat sound') },
-    gameOver: { play: () => console.log('Play game over sound') },
-    bonusEat: { play: () => console.log('Play bonus eat sound') },
-    levelUp: { play: () => console.log('Play level up sound') }
+    eat: eatSound || { play: () => console.log('Play eat sound') },
+    gameOver: gameOverSound || { play: () => console.log('Play game over sound') },
+    bonusEat: bonusSound || { play: () => console.log('Play bonus eat sound') },
+    levelUp: levelUpSound || { play: () => console.log('Play level up sound') }
 };
 
 const boardSize = 20;
@@ -153,7 +159,7 @@ function drawEyes() {
     eyeCtx.fill();
 }
 
-function drawRect(x, y, color, type = 'snake', isHead = false, context = ctx) {
+function drawRect(x, y, color, type = 'snake', isHead = false, isTail = false, context = ctx) {
     context.fillStyle = color;
     const posX = x * tileSize;
     const posY = y * tileSize;
@@ -173,15 +179,52 @@ function drawRect(x, y, color, type = 'snake', isHead = false, context = ctx) {
         context.lineWidth = 2;
         context.strokeRect(posX + 1, posY + 1, tileSize - 2, tileSize - 2);
     } else {
-        context.fillRect(posX, posY, tileSize - 1, tileSize - 1);
-        context.fillStyle = 'rgba(255,255,255,0.1)';
-        context.fillRect(posX, posY, tileSize - 1, 2);
-        context.fillStyle = 'rgba(0,0,0,0.1)';
-        context.fillRect(posX, posY + tileSize - 3, tileSize - 1, 2);
-
+        // 蛇的绘制
         if (isHead) {
+            // 蛇头 - 绘制为圆形
+            const headRadius = tileSize / 2 - 1;
+            context.beginPath();
+            context.arc(posX + tileSize / 2, posY + tileSize / 2, headRadius, 0, 2 * Math.PI);
+            context.fill();
+            
+            // 添加头部皮肤纹理
+            context.fillStyle = 'rgba(0,0,0,0.1)';
+            context.beginPath();
+            context.arc(posX + tileSize / 2, posY + tileSize / 2, headRadius * 0.7, 0, 2 * Math.PI);
+            context.fill();
+            
             drawEyes();
             context.drawImage(eyeCanvas, posX, posY);
+        } else if (isTail) {
+            // 蛇尾 - 绘制为小一些的圆形
+            context.beginPath();
+            context.arc(posX + tileSize / 2, posY + tileSize / 2, tileSize / 3, 0, 2 * Math.PI);
+            context.fill();
+            
+            // 尾部纹理
+            context.fillStyle = 'rgba(0,0,0,0.15)';
+            context.beginPath();
+            context.arc(posX + tileSize / 2, posY + tileSize / 2, tileSize / 6, 0, 2 * Math.PI);
+            context.fill();
+        } else {
+            // 蛇身 - 圆角矩形
+            const radius = tileSize / 4;
+            context.beginPath();
+            context.moveTo(posX + radius, posY);
+            context.lineTo(posX + tileSize - radius, posY);
+            context.quadraticCurveTo(posX + tileSize, posY, posX + tileSize, posY + radius);
+            context.lineTo(posX + tileSize, posY + tileSize - radius);
+            context.quadraticCurveTo(posX + tileSize, posY + tileSize, posX + tileSize - radius, posY + tileSize);
+            context.lineTo(posX + radius, posY + tileSize);
+            context.quadraticCurveTo(posX, posY + tileSize, posX, posY + tileSize - radius);
+            context.lineTo(posX, posY + radius);
+            context.quadraticCurveTo(posX, posY, posX + radius, posY);
+            context.closePath();
+            context.fill();
+            
+            // 添加身体纹理
+            context.fillStyle = 'rgba(255,255,255,0.1)';
+            context.fillRect(posX + 2, posY + 2, tileSize - 4, tileSize / 3);
         }
     }
 }
@@ -259,6 +302,14 @@ function updateAndDrawExplosion(context) {
             context.fill();
         }
     }
+    
+    // 如果爆炸动画结束且游戏结束屏幕未显示，则显示游戏结束屏幕
+    if (explosionParticles.length === 0 && isGameOverAnimating && gameOverScreen.style.display !== 'flex') {
+        isGameOverAnimating = false;
+        gameOverScreen.style.display = 'flex';
+        console.log('爆炸动画结束: 游戏结束屏幕已显示');
+    }
+    
     return explosionParticles.length > 0;
 }
 
@@ -291,8 +342,25 @@ function drawGame(timestamp) {
 
     if (!isGameOverAnimating) {
         snake.forEach((segment, index) => {
-            const color = index === 0 ? '#2ecc71' : '#27ae60';
-            drawRect(segment.x, segment.y, color, 'snake', index === 0);
+            const isHead = index === 0;
+            const isTail = index === snake.length - 1;
+            
+            // 颜色渐变效果，从头到尾
+            let color;
+            if (isHead) {
+                color = '#2ecc71'; // 蛇头颜色
+            } else if (isTail) {
+                color = '#27ae60'; // 蛇尾颜色
+            } else {
+                // 身体部分使用渐变色，从亮到暗
+                const ratio = 1 - (index / snake.length);
+                const r = Math.round(46 + (46 * ratio));
+                const g = Math.round(204 + (17 * ratio));
+                const b = Math.round(113 + (-17 * ratio));
+                color = `rgb(${r}, ${g}, ${b})`;
+            }
+            
+            drawRect(segment.x, segment.y, color, 'snake', isHead, isTail);
         });
     }
     updateAndDrawParticles(ctx);
@@ -382,6 +450,7 @@ function gameLoop(timestamp) {
             if (!updateAndDrawExplosion(ctx)) {
                 isGameOverAnimating = false;
                 gameOverScreen.style.display = 'flex';
+                console.log('游戏循环: 游戏结束屏幕已显示');
             }
             requestAnimationFrame(gameLoop);
             return;
@@ -411,6 +480,11 @@ function gameLoop(timestamp) {
         requestAnimationFrame(gameLoop);
     } catch (error) {
         console.error('Error in gameLoop:', error);
+        // 出错时也确保显示游戏结束屏幕
+        if (checkCollision()) {
+            isGameOverAnimating = false;
+            gameOverScreen.style.display = 'flex';
+        }
     }
 }
 
@@ -496,14 +570,14 @@ function spawnBonusFood(duration) {
 function eatFood(isBonus) {
     if (isBonus) {
         score += BONUS_FOOD_SCORE;
-        sounds.bonusEat.play();
+        playSound(sounds.bonusEat);
         bonusFood = null;
         clearTimeout(bonusFoodTimer);
         stats.bonusFoodEaten++;
         checkAchievements();
     } else {
         score++;
-        sounds.eat.play();
+        playSound(sounds.eat);
         checkAchievements();
     }
     
@@ -512,7 +586,7 @@ function eatFood(isBonus) {
 
     if (currentConfig && score >= currentConfig.scoreToNextLevel && currentLevel < levelConfig.length) {
         currentLevel++;
-        sounds.levelUp.play();
+        playSound(sounds.levelUp);
         loadLevel(currentLevel);
     }
     if (!isBonus) spawnFood();
@@ -535,7 +609,7 @@ function checkCollision() {
 }
 
 function gameOver() {
-    if (sounds.gameOver.play) sounds.gameOver.play();
+    playSound(sounds.gameOver);
     if (sounds.backgroundMusic.pause) sounds.backgroundMusic.pause();
     clearTimeout(bonusFoodTimer);
     createExplosionParticles([...snake]); // Pass a copy of snake segments
@@ -574,12 +648,21 @@ function gameOver() {
     
     // 确保动画结束后显示游戏结束屏幕
     setTimeout(() => {
-        if (isGameOverAnimating && explosionParticles.length === 0) {
+        if (isGameOverAnimating) {
             isGameOverAnimating = false;
             gameOverScreen.style.display = 'flex';
             console.log('游戏结束屏幕已显示');
         }
-    }, 1500); // 1.5秒后检查并强制显示结束屏幕
+    }, 1500); // 1.5秒后强制显示结束屏幕，无论爆炸动画是否完成
+    
+    // 强制设置一个备份定时器，确保无论如何都会显示游戏结束界面
+    setTimeout(() => {
+        if (gameOverScreen.style.display !== 'flex') {
+            isGameOverAnimating = false;
+            gameOverScreen.style.display = 'flex';
+            console.log('备份定时器：游戏结束屏幕已显示');
+        }
+    }, 2500);
 }
 
 function togglePause() {
@@ -844,4 +927,19 @@ function showAchievementSummary() {
 // 重置当前游戏的成就记录
 function resetGameAchievements() {
     achievementsEarned = [];
+}
+
+// 音效处理函数
+function playSound(sound) {
+    if (sound && typeof sound.play === 'function') {
+        // 重置音频以确保可以再次播放
+        if (sound.currentTime) sound.currentTime = 0;
+        // 播放音效
+        const playPromise = sound.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(e => {
+                console.error('播放音效失败:', e);
+            });
+        }
+    }
 }
