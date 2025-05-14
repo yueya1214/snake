@@ -450,7 +450,7 @@ function spawnBonusFood(duration) {
         };
     } while (
         snake.some(segment => segment.x === bonusFood.x && segment.y === bonusFood.y) ||
-        obstacles.some(obs => obs.x === bonusFood.x && obs.y === newFood.y) ||
+        obstacles.some(obs => obs.x === bonusFood.x && obs.y === bonusFood.y) ||
         (food.x === bonusFood.x && food.y === bonusFood.y)
     );
     bonusFood.spawnTime = Date.now();
@@ -483,83 +483,184 @@ function eatFood(isBonus) {
 
 function checkCollision() {
     const head = snake[0];
+    
     for (let i = 1; i < snake.length; i++) {
         if (head.x === snake[i].x && head.y === snake[i].y) {
-            این مقاله درباره چیست؟
+            return true;
+        }
+    }
+    
+    if (obstacles.some(obs => obs.x === head.x && obs.y === head.y)) {
+        return true;
+    }
+    
+    return false;
+}
 
-این مقاله به بررسی و رفع مشکلات یک بازی آنلاین به نام "贪吃蛇大作战" (Snake Game) می‌پردازد که با استفاده از HTML، CSS و JavaScript پیاده‌سازی شده است. کاربر گزارش داده بود که کلیک‌ها در صفحه وب هیچ واکنشی ندارند. در پاسخ، مشکلات موجود در کد شناسایی شده و نسخه اصلاح‌شده‌ای از فایل‌های `snake.html`، `snake.css` و `snake.js` ارائه شده است.
+function gameOver() {
+    if (sounds.gameOver.play) sounds.gameOver.play();
+    if (sounds.backgroundMusic.pause) sounds.backgroundMusic.pause();
+    clearTimeout(bonusFoodTimer);
+    createExplosionParticles([...snake]); // Pass a copy of snake segments
+    isGameOverAnimating = true; // Start animation loop
+    // The actual gameOverScreen display is deferred until animation ends
 
-### مشکلات اصلی شناسایی‌شده:
-1. **ساختار ناقص HTML**:
-   - فایل `snake.html` فاقد تگ‌های اساسی مانند `<html>`، `<head>` و `<body>` بود.
-   - عدم وجود فایل CSS مربوط به Font Awesome برای نمایش آیکون‌ها.
-   - تگ `<script>` به‌درستی بسته نشده بود و ویژگی `defer` نداشت.
+    if (score > highScore) {
+        highScore = score;
+        highScoreDisplay.textContent = highScore;
+        localStorage.setItem('snakeHighScore', highScore);
+    }
+    finalScoreDisplay.textContent = score;
+}
 
-2. **خطاهای JavaScript**:
-   - شیء `sounds` تعریف نشده بود، که باعث خطا در اجرای توابع مربوط به موسیقی پس‌زمینه می‌شد.
-   - ثابت `OBSTACLE_COUNT` به اشتباه به‌عنوان `const` تعریف شده بود، در حالی که نیاز به تغییر داشت.
-   - فقدان مدیریت خطا در توابع کلیدی مانند `initGame` و `gameLoop`.
+function togglePause() {
+    if (isGameOverAnimating) return; // Don't allow pause during game over animation
+    if (gameOverScreen.style.display === 'flex' || startScreen.style.display === 'flex') return;
+    isPaused = !isPaused;
+    if (isPaused) {
+        pauseScreen.style.display = 'flex';
+        clearTimeout(bonusFoodTimer);
+        if (bonusFood) {
+            bonusFood.remainingTimeOnPause = currentConfig.bonusFoodDuration - (Date.now() - bonusFood.spawnTime);
+        }
+        if (isMusicPlaying && sounds.backgroundMusic.pause) sounds.backgroundMusic.pause();
+    } else {
+        pauseScreen.style.display = 'none';
+        if (bonusFood && bonusFood.remainingTimeOnPause > 0) {
+            bonusFood.spawnTime = Date.now();
+            bonusFoodTimer = setTimeout(() => {
+                bonusFood = null;
+            }, bonusFood.remainingTimeOnPause);
+        }
+        if (isMusicPlaying && sounds.backgroundMusic.play) sounds.backgroundMusic.play();
+    }
+}
 
-3. **مشکلات CSS**:
-   - عدم تنظیم `z-index` برای عناصر `.overlay` ممکن بود باعث پوشیده شدن دکمه‌ها شود.
-   - دکمه‌های کنترل موبایل در برخی دستگاه‌ها ممکن بود به‌درستی نمایش داده نشوند.
+function showFloatingScore(text, x, y, color = '#fff') {
+    const scoreText = document.createElement('div');
+    scoreText.classList.add('floating-score');
+    scoreText.textContent = text;
+    scoreText.style.left = `${(x + 0.25) * tileSize}px`;
+    scoreText.style.top = `${(y + 0.25) * tileSize}px`;
+    scoreText.style.color = color;
 
-4. **مشکلات مربوط به کلیک**:
-   - خطاهای JavaScript مانع از اجرای صحیح تابع `initGame` می‌شدند.
-   - ممکن بود دکمه‌ها به دلیل پوشیده شدن توسط لایه‌های دیگر (مانند `.overlay`) غیرقابل کلیک باشند.
-   - رویدادهای `touchstart` برای دکمه‌های موبایل ممکن بود در برخی مرورگرها به‌درستی کار نکنند.
+    gameBoardContainer.appendChild(scoreText);
 
-### راه‌حل‌های اعمال‌شده:
-1. **اصلاح HTML**:
-   - ساختار کامل HTML با تگ‌های استاندارد اضافه شد.
-   - فایل CSS مربوط به Font Awesome وارد شد.
-   - تگ `<script>` با ویژگی `defer` به انتهای `<body>` منتقل شد.
+    requestAnimationFrame(() => {
+        scoreText.style.transform = 'translateY(-30px)';
+        scoreText.style.opacity = '0';
+    });
 
-2. **اصلاح JavaScript**:
-   - شیء `sounds` تعریف شد و شامل یک فایل صوتی واقعی برای موسیقی پس‌زمینه است.
-   - متغیر `OBSTACLE_COUNT` به `let` تغییر یافت.
-   - مدیریت خطا با استفاده از بلوک‌های `try-catch` به توابع کلیدی اضافه شد.
-   - رویدادهای `click` به‌عنوان پشتیبان برای `touchstart` اضافه شدند تا سازگاری با دستگاه‌های موبایل بهبود یابد.
+    setTimeout(() => {
+        if (scoreText.parentElement) {
+            scoreText.parentElement.removeChild(scoreText);
+        }
+    }, 500);
+}
 
-3. **بهینه‌سازی CSS**:
-   - مقدار `z-index` برای دکمه‌ها و `.overlay` تنظیم شد تا از پوشیده شدن دکمه‌ها جلوگیری شود.
-   - اطمینان حاصل شد که `.mobile-controls` در دستگاه‌های موبایل به‌درستی نمایش داده می‌شود.
-   - بازخورد بصری دکمه‌ها (مانند تغییر رنگ هنگام کلیک) بهبود یافت.
+function handleDirectionChange(newDx, newDy, buttonElement = null) {
+    if (changingDirection) return;
+    if ((dx === -newDx && dx !== 0) || (dy === -newDy && dy !== 0)) return;
+    if (isPaused || isGameOverAnimating) return;
+    if (startScreen.style.display === 'flex' || gameOverScreen.style.display === 'flex') return;
+    changingDirection = true;
+    dx = newDx;
+    dy = newDy;
 
-4. **اضافه کردن موسیقی پس‌زمینه**:
-   - یک تگ `<audio>` برای پخش موسیقی پس‌زمینه اضافه شد.
-   - کنترل پخش و توقف موسیقی در تابع `toggleMusicButton` پیاده‌سازی شد.
+    if (buttonElement) {
+        buttonElement.classList.add('active-feedback');
+        setTimeout(() => buttonElement.classList.remove('active-feedback'), 100);
+    }
+}
 
-5. **بهبود سازگاری**:
-   - کد برای اجرا در مرورگرهای مختلف (دسکتاپ و موبایل) آزمایش شد.
-   - لاگ‌های دیباگ اضافه شدند تا شناسایی مشکلات آسان‌تر شود.
+document.addEventListener('keydown', e => {
+    const key = e.key.toLowerCase();
+    if (key === 'p') {
+        togglePause();
+        return;
+    }
+    let targetButton = null;
+    if (key === 'arrowup' || key === 'w') { handleDirectionChange(0, -1); targetButton = btnUp; }
+    else if (key === 'arrowdown' || key === 's') { handleDirectionChange(0, 1); targetButton = btnDown; }
+    else if (key === 'arrowleft' || key === 'a') { handleDirectionChange(-1, 0); targetButton = btnLeft; }
+    else if (key === 'arrowright' || key === 'd') { handleDirectionChange(1, 0); targetButton = btnRight; }
 
-### تغییرات کلیدی در کد:
-- **snake.html**:
-  - ساختار کامل HTML با متا تگ‌های مناسب.
-  - اضافه شدن تگ `<audio>` برای موسیقی پس‌زمینه.
-  - اطمینان از وجود تمام IDهای موردنیاز برای JavaScript.
+    // Simulate button press feedback for keyboard
+    if (targetButton && targetButton.offsetParent !== null) { // Check if button is visible
+        targetButton.classList.add('active-feedback');
+        setTimeout(() => targetButton.classList.remove('active-feedback'), 100);
+    }
+});
 
-- **snake.css**:
-  - تنظیم `z-index` برای دکمه‌ها و `.overlay`.
-  - بهبود بازخورد بصری دکمه‌های موبایل.
-  - اطمینان از نمایش صحیح دکمه‌های موبایل در دستگاه‌های کوچک.
+// Mobile controls listeners with feedback
+[btnUp, btnDown, btnLeft, btnRight].forEach(btn => {
+    if (btn) {
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            let newDx = 0, newDy = 0;
+            if (btn === btnUp) newDy = -1;
+            else if (btn === btnDown) newDy = 1;
+            else if (btn === btnLeft) newDx = -1;
+            else if (btn === btnRight) newDx = 1;
+            handleDirectionChange(newDx, newDy, btn);
+        });
+        
+        // 添加click事件作为备选，提升兼容性
+        btn.addEventListener('click', (e) => {
+            let newDx = 0, newDy = 0;
+            if (btn === btnUp) newDy = -1;
+            else if (btn === btnDown) newDy = 1;
+            else if (btn === btnLeft) newDx = -1;
+            else if (btn === btnRight) newDx = 1;
+            handleDirectionChange(newDx, newDy, btn);
+        });
+    }
+});
 
-- **snake.js**:
-  - تعریف شیء `sounds` با موسیقی واقعی.
-  - تغییر `OBSTACLE_COUNT` به `let`.
-  - اضافه کردن مدیریت خطا در توابع اصلی.
-  - بهبود مدیریت رویدادهای کلیک و لمس.
-  - اضافه کردن لاگ‌های دیباگ برای ردیابی اجرای کد.
+if (toggleMusicButton) {
+    toggleMusicButton.addEventListener('click', () => {
+        isMusicPlaying = !isMusicPlaying;
+        if (isMusicPlaying) {
+            if (sounds.backgroundMusic.play && !isPaused && startScreen.style.display === 'none' && !isGameOverAnimating) {
+                sounds.backgroundMusic.play().catch(e => console.log('Music play error:', e));
+            }
+            toggleMusicButton.innerHTML = '<i class="fas fa-music"></i> 背景音乐: 开';
+        } else {
+            if (sounds.backgroundMusic.pause) sounds.backgroundMusic.pause();
+            toggleMusicButton.innerHTML = '<i class="fas fa-volume-mute"></i> 背景音乐: 关';
+        }
+    });
+}
 
-### نکات برای کاربر:
-- **موسیقی پس‌زمینه**: فایل صوتی نمونه‌ای از SoundHelix استفاده شده است. شما می‌توانید آن را با فایل MP3 دلخواه خود جایگزین کنید.
-- **آزمایش**: کد را در مرورگرهای مختلف (Chrome، Firefox، Safari) و دستگاه‌های موبایل آزمایش کنید.
-- **دیباگ**: در صورت بروز مشکل، کنسول توسعه‌دهنده مرورگر (F12) را بررسی کنید تا خطاهای احتمالی شناسایی شوند.
-- **بهبودهای آینده**:
-  - اضافه کردن جلوه‌های صوتی واقعی برای `eatSound`، `gameOverSound` و غیره.
-  - بهبود انیمیشن‌ها برای تجربه کاربری بهتر.
-  - اضافه کردن تنظیمات بیشتر مانند انتخاب تم رنگی.
+// 为开始按钮添加事件监听
+startButton.addEventListener('click', () => {
+    startScreen.style.display = 'none';
+    initGame();
+});
 
-### نتیجه:
-این کد اصلاح‌شده باید مشکل "کلیک بدون واکنش" را حل کند و یک بازی کاملاً کاربردی ارائه دهد. اگر همچنان مشکلی وجود داشت، لطفاً خروجی کنسول مرورگر یا جزئیات دستگاه/مرورگر را ارائه دهید تا بررسی دقیق‌تری انجام شود.
+// 为重新开始按钮添加事件监听
+restartButton.addEventListener('click', () => {
+    gameOverScreen.style.display = 'none';
+    initGame();
+});
+
+// 加载高分
+const savedHighScore = localStorage.getItem('snakeHighScore');
+if (savedHighScore) {
+    highScore = parseInt(savedHighScore);
+    highScoreDisplay.textContent = highScore;
+}
+
+resizeCanvas();
+startScreen.style.display = 'flex';
+
+// 添加触摸屏幕暂停功能
+gameBoard.addEventListener('click', function(e) {
+    if (!isPaused && !isGameOverAnimating && 
+        startScreen.style.display !== 'flex' && 
+        gameOverScreen.style.display !== 'flex') {
+        togglePause();
+    }
+});
+
+window.addEventListener('resize', resizeCanvas);

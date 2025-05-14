@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇大作战</title>
+    <link rel="stylesheet" href="snake.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>贪吃蛇大作战</h1>
+            <div class="score-board">
+                得分: <span id="score">0</span> | 最高分: <span id="high-score">0</span> | 等级: <span id="level">1</span>
+            </div>
+            <button id="toggle-music-button" class="game-control-button">
+                <i class="fas fa-music"></i> 背景音乐: 开
+            </button>
+        </header>
+
+        <div class="game-board-container">
+            <canvas id="game-board"></canvas>
+            <div id="start-screen" class="overlay">
+                <h2>经典贪吃蛇</h2>
+                <p>使用方向键或WASD键控制方向</p>
+                <button id="start-button">开始游戏</button>
+                <div class="difficulty-selector">
+                    <label for="difficulty">选择难度:</label>
+                    <select id="difficulty">
+                        <option value="easy">简单</option>
+                        <option value="medium" selected>中等</option>
+                        <option value="hard">困难</option>
+                    </select>
+                </div>
+            </div>
+            <div id="game-over-screen" class="overlay" style="display: none;">
+                <h2>游戏结束!</h2>
+                <p>你的得分: <span id="final-score">0</span></p>
+                <button id="restart-button">重新开始</button>
+            </div>
+            <div id="pause-screen" class="overlay" style="display: none;">
+                <h2>游戏暂停</h2>
+                <p>按 P 键继续游戏</p>
+            </div>
+        </div>
+
+        <div class="controls">
+            <p>控制: 方向键 / WASD</p>
+            <p>暂停/继续: P 键</p>
+            <div class="mobile-controls">
+                <div>
+                    <button id="btn-up">↑</button>
+                </div>
+                <div>
+                    <button id="btn-left">←</button>
+                    <button id="btn-down">↓</button>
+                    <button id="btn-right">→</button>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>© 2025 贪吃蛇游戏</p>
+        </footer>
+    </div>
+
+    <audio id="background-music" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script src="snake.js" defer></script>
+</body>
+</html>
