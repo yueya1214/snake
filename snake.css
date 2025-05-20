@@ -8,6 +8,49 @@ body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #fff;
     overflow: hidden;
+    transition: background 0.5s ease;
+}
+
+/* 主题样式 */
+body.theme-default {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+body.theme-ocean {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+}
+
+body.theme-forest {
+    background: linear-gradient(135deg, #2c7744 0%, #5a3f37 100%);
+}
+
+body.theme-sunset {
+    background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);
+}
+
+.theme-selector {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.theme-option {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.3);
+    transition: transform 0.2s;
+}
+
+.theme-option:hover {
+    transform: scale(1.1);
+}
+
+.theme-option.active {
+    border: 2px solid white;
+    transform: scale(1.1);
 }
 
 .container {

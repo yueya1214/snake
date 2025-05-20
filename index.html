@@ -33,6 +33,21 @@
                         <option value="hard">困难</option>
                     </select>
                 </div>
+                <div class="theme-selector">
+                    <div class="theme-option theme-default active" data-theme="default"></div>
+                    <div class="theme-option theme-ocean" data-theme="ocean"></div>
+                    <div class="theme-option theme-forest" data-theme="forest"></div>
+                    <div class="theme-option theme-sunset" data-theme="sunset"></div>
+                </div>
+                <div class="skin-selector">
+                    <label>蛇皮肤:</label>
+                    <select id="skin-select">
+                        <option value="default">默认</option>
+                        <option value="fire">火焰</option>
+                        <option value="ice">冰霜</option>
+                        <option value="rainbow">彩虹</option>
+                    </select>
+                </div>
             </div>
             <div id="game-over-screen" class="overlay" style="display: none;">
                 <h2>游戏结束!</h2>
@@ -94,6 +109,12 @@
         Your browser does not support the audio element.
     </audio>
 
+    <!-- 模块化重构 -->
+    <script src="config.js" defer></script>
+    <script src="utils.js" defer></script>
+    <script src="game-core.js" defer></script>
+    <script src="renderer.js" defer></script>
+    <script src="achievements.js" defer></script>
     <script src="snake.js" defer></script>
 </body>
 </html>
