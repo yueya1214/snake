@@ -102,9 +102,11 @@ export class AchievementSystem {
         showEffectMessage(`成就解锁: ${achievement.name}`, '#FFD700');
         
         // 播放音效
-        const sound = new Audio('achievement.mp3');
-        sound.volume = 0.3;
-        sound.play().catch(e => console.error('播放成就音效失败:', e));
+        const levelUpSound = document.getElementById('level-up-sound');
+        if (levelUpSound) {
+            levelUpSound.currentTime = 0;
+            levelUpSound.play().catch(e => console.error('播放成就音效失败:', e));
+        }
     }
 
     checkGameEnd(score) {

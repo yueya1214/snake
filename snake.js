@@ -15,98 +15,56 @@ document.addEventListener('DOMContentLoaded', () => {
         
         class SnakeGame {
             constructor() {
-                console.log('Initializing SnakeGame...');
-                
-                // 获取DOM元素并添加调试
-                const elements = {
-                    canvas: document.getElementById('game-board'),
-                    startScreen: document.getElementById('start-screen'),
-                    gameOverScreen: document.getElementById('game-over-screen'),
-                    startButton: document.getElementById('start-button'),
-                    restartButton: document.getElementById('restart-button')
-                };
-                
-                // 调试输出元素状态
-                console.log('DOM elements:', elements);
-                
-                // 验证元素存在
-                for (const [name, element] of Object.entries(elements)) {
-                    if (!element) {
-                        console.error(`Missing element: ${name}`);
+                try {
+                    console.log('Initializing SnakeGame...');
+                    
+                    // 获取DOM元素并添加调试
+                    const elements = {
+                        canvas: document.getElementById('game-board'),
+                        startScreen: document.getElementById('start-screen'),
+                        gameOverScreen: document.getElementById('game-over-screen'),
+                        startButton: document.getElementById('start-button'),
+                        restartButton: document.getElementById('restart-button')
+                    };
+                    
+                    // 调试输出元素状态
+                    console.log('DOM elements:', elements);
+                    
+                    // 验证元素存在
+                    for (const [name, element] of Object.entries(elements)) {
+                        if (!element) {
+                            console.error(`Missing element: ${name}`);
+                        }
                     }
-                }
-                
-                // 赋值到实例
-                Object.assign(this, elements);
-                
-                // 如果关键元素缺失，尝试创建备用按钮
-                if (!this.startButton) {
-                    console.warn('Creating fallback start button');
-                    this.startButton = document.createElement('button');
-                    this.startButton.textContent = '开始游戏';
-                    this.startButton.style.position = 'fixed';
-                    this.startButton.style.top = '20px';
-                    this.startButton.style.left = '20px';
-                    this.startButton.style.zIndex = '1000';
-                    document.body.appendChild(this.startButton);
-                }
+                    
+                    // 赋值到实例
+                    Object.assign(this, elements);
+                    
+                    // 如果关键元素缺失，尝试创建备用按钮
+                    if (!this.startButton) {
+                        console.warn('Creating fallback start button');
+                        this.startButton = document.createElement('button');
+                        this.startButton.textContent = '开始游戏';
+                        this.startButton.style.position = 'fixed';
+                        this.startButton.style.top = '20px';
+                        this.startButton.style.left = '20px';
+                        this.startButton.style.zIndex = '1000';
+                        document.body.appendChild(this.startButton);
+                    }
                     
                     // 初始化游戏模块
                     this.game = new GameCore();
                     this.renderer = new Renderer(this.canvas);
                     this.achievements = new AchievementSystem();
                     
-                    // 测试简单点击事件
-                    this.startButton.onclick = () => {
-                        console.log('Simple onclick handler triggered');
-                        this.startGame();
-                    };
-                    
-                    // 添加多个事件监听方式测试
-                    this.startButton.addEventListener('click', (e) => {
-                        console.log('addEventListener click triggered', e);
-                        this.startGame();
-                    }, {capture: true});
-                    
-                    // 可视化调试元素
-                    console.log('Visual debugging elements...');
-                    [this.startButton, this.restartButton].forEach(btn => {
-                        if (btn) {
-                            btn.style.outline = '2px solid red';
-                            btn.style.boxShadow = '0 0 0 2px rgba(255,0,0,0.5)';
-                            console.log(`Button ${btn.id} position:`, btn.getBoundingClientRect());
-                        }
-                    });
-
-                    // 检查元素覆盖情况
-                    function checkElementOverlap(element) {
-                        const rect = element.getBoundingClientRect();
-                        const centerX = rect.left + rect.width/2;
-                        const centerY = rect.top + rect.height/2;
-                        
-                        const topElement = document.elementFromPoint(centerX, centerY);
-                        console.log(`Element at button center:`, topElement);
-                        
-                        return topElement === element;
-                    }
-
-                    console.log('Start button clickable:', checkElementOverlap(this.startButton));
-                    console.log('Restart button clickable:', checkElementOverlap(this.restartButton));
-
-                    // 强制使按钮可点击
-                    this.startButton.style.position = 'relative';
-                    this.startButton.style.zIndex = '9999';
-                    this.restartButton.style.position = 'relative';
-                    this.restartButton.style.zIndex = '9999';
-
-                    // 简化并调试点击事件
+                    // 简化点击事件
                     const handleStartClick = () => {
-                        console.log('Start button clicked - simple handler');
+                        console.log('Start button clicked');
                         this.startGame();
                     };
                     
                     const handleRestartClick = () => {
-                        console.log('Restart button clicked - simple handler');
+                        console.log('Restart button clicked');
                         this.resetGame();
                     };
                     
@@ -118,43 +76,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.startButton = document.getElementById('start-button');
                     this.restartButton = document.getElementById('restart-button');
                     
-                    // 强制按钮可点击
+                    // 确保按钮可点击
                     this.startButton.style.pointerEvents = 'auto';
                     this.startButton.style.position = 'relative';
                     this.startButton.style.zIndex = '9999';
-                    this.startButton.style.border = '2px solid red';
-                    this.startButton.style.background = 'yellow';
-                    this.startButton.style.color = 'black';
                     
                     this.restartButton.style.pointerEvents = 'auto';
                     this.restartButton.style.position = 'relative';
                     this.restartButton.style.zIndex = '9999';
-                    this.restartButton.style.border = '2px solid red';
-                    this.restartButton.style.background = 'yellow';
-                    this.restartButton.style.color = 'black';
                     
-                    // 添加点击区域测试
-                    const clickTest = document.createElement('div');
-                    clickTest.style.position = 'fixed';
-                    clickTest.style.top = '0';
-                    clickTest.style.left = '0';
-                    clickTest.style.width = '100%';
-                    clickTest.style.height = '100%';
-                    clickTest.style.background = 'rgba(0,255,0,0.1)';
-                    clickTest.style.zIndex = '9998';
-                    clickTest.onclick = (e) => {
-                        console.log('Clicked at:', e.clientX, e.clientY, 
-                                   'Element:', document.elementFromPoint(e.clientX, e.clientY));
-                    };
-                    document.body.appendChild(clickTest);
-                    
-                    // 最终事件绑定
+                    // 绑定事件
                     this.startButton.onclick = handleStartClick;
                     this.restartButton.onclick = handleRestartClick;
-                    
-                    console.log('Button positions:',
-                        'Start:', this.startButton.getBoundingClientRect(),
-                        'Restart:', this.restartButton.getBoundingClientRect());
                     
                     // 验证按钮是否存在
                     if (!(this.startButton instanceof HTMLElement)) {
@@ -211,29 +144,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 switch(e.key) {
                     case 'ArrowUp':
+                    case 'w':
+                    case 'W':
                         if (this.game.direction !== 'down') this.game.nextDirection = 'up';
                         break;
                     case 'ArrowDown':
+                    case 's':
+                    case 'S':
                         if (this.game.direction !== 'up') this.game.nextDirection = 'down';
                         break;
                     case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
                         if (this.game.direction !== 'right') this.game.nextDirection = 'left';
                         break;
                     case 'ArrowRight':
+                    case 'd':
+                    case 'D':
                         if (this.game.direction !== 'left') this.game.nextDirection = 'right';
                         break;
                     case ' ':
-                        this.isPaused = !this.isPaused;
+                    case 'p':
+                    case 'P':
+                        this.togglePause();
                         break;
+                }
+            }
+            
+            togglePause() {
+                this.isPaused = !this.isPaused;
+                const pauseScreen = document.getElementById('pause-screen');
+                if (pauseScreen) {
+                    pauseScreen.style.display = this.isPaused ? 'flex' : 'none';
                 }
             }
             
             gameLoop = (timestamp) => {
                 if (this.gameOver) {
                     this.showGameOver();
+                    requestAnimationFrame(this.gameLoop);
                     return;
                 }
                 
+                // 暂停检查
                 if (this.isPaused) {
                     requestAnimationFrame(this.gameLoop);
                     return;
@@ -278,8 +231,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             showGameOver() {
                 try {
-                    this.gameOverScreen.style.display = 'block';
+                    this.gameOverScreen.style.display = 'flex';
                     document.getElementById('final-score').textContent = this.game.score;
+                    document.getElementById('highscore-value').textContent = this.game.highScore;
                     document.removeEventListener('keydown', this.handleKeyDown);
                 } catch (error) {
                     console.error('Show game over failed:', error);
@@ -292,10 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return new Promise((resolve) => {
                 const resources = [
                     // 音频文件
-                    'sounds/eat.mp3',
-                    'sounds/bonus.mp3',
-                    'sounds/gameover.mp3',
-                    // 其他资源...
+                    'https://assets.mixkit.co/active_storage/sfx/212/212-preview.mp3',
+                    'https://assets.mixkit.co/active_storage/sfx/270/270-preview.mp3',
+                    'https://assets.mixkit.co/active_storage/sfx/218/218-preview.mp3'
                 ];
                 
                 let loaded = 0;
@@ -430,207 +383,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 启动游戏
         initGame();
-    constructor() {
-        // 初始化DOM元素
-        this.canvas = document.getElementById('game-board');
-        this.startScreen = document.getElementById('start-screen');
-        this.gameOverScreen = document.getElementById('game-over-screen');
-        this.scoreDisplay = document.getElementById('score');
-        this.highScoreDisplay = document.getElementById('high-score');
-        this.startButton = document.getElementById('start-button');
-        this.restartButton = document.getElementById('restart-button');
-        this.difficultySelect = document.getElementById('difficulty');
-        this.themeOptions = document.querySelectorAll('.theme-option');
-        this.skinSelect = document.getElementById('skin-select');
-
-        // 初始化模块
-        this.game = new GameCore();
-        this.renderer = new Renderer(this.canvas);
-        this.achievements = new AchievementSystem();
-
-        // 游戏状态
-        this.lastTime = 0;
-        this.gameOver = false;
-        this.isPaused = false;
-        this.frameCount = 0;
-        this.lastFpsUpdate = 0;
-        this.fps = 0;
-
-        // 初始化游戏
-        this.init();
-    }
-
-    init() {
-        // 设置事件监听
-        this.startButton.addEventListener('click', () => this.startGame());
-        this.restartButton.addEventListener('click', () => this.resetGame());
-        
-        // 键盘控制
-        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
-        
-        // 主题切换
-        this.themeOptions.forEach(option => {
-            option.addEventListener('click', () => {
-                const theme = option.dataset.theme;
-                this.renderer.theme = theme;
-                document.body.className = `theme-${theme}`;
-                try {
-                    localStorage.setItem('snakeTheme', theme);
-                } catch (e) {
-                    console.error('保存主题失败:', e);
-                }
-            });
-        });
-        
-        // 皮肤选择
-        this.skinSelect.addEventListener('change', (e) => {
-            this.renderer.currentSkin = e.target.value;
-            try {
-                localStorage.setItem('snakeSkin', e.target.value);
-            } catch (e) {
-                console.error('保存皮肤失败:', e);
-            }
-        });
-
-        // 加载保存的设置
-        this.loadSettings();
-        
-        // 初始渲染
-        this.renderer.init();
-        this.renderer.render({
-            snake: this.game.snake,
-            food: this.game.food,
-            score: this.game.score,
-            highScore: this.game.highScore,
-            activeEffects: this.game.activeEffects
-        });
-    }
-
-    loadSettings() {
-        // 加载主题
-        try {
-            const savedTheme = localStorage.getItem('snakeTheme') || 'default';
-            this.renderer.theme = savedTheme;
-            document.body.className = `theme-${savedTheme}`;
-            document.querySelector(`.theme-option[data-theme="${savedTheme}"]`)?.classList.add('active');
-        } catch (e) {
-            console.error('加载主题失败:', e);
-        }
-        
-        // 加载皮肤
-        try {
-            const savedSkin = localStorage.getItem('snakeSkin') || 'default';
-            this.renderer.currentSkin = savedSkin;
-            this.skinSelect.value = savedSkin;
-        } catch (e) {
-            console.error('加载皮肤失败:', e);
-        }
-    }
-
-    startGame() {
-        // 重置游戏状态
-        this.game.resetGame();
-        this.gameOver = false;
-        this.isPaused = false;
-        this.lastTime = 0;
-        this.frameCount = 0;
-        this.lastFpsUpdate = 0;
-        
-        // 设置难度
-        const difficulty = this.difficultySelect.value;
-        this.game.gameSpeed = CONFIG.DIFFICULTY[difficulty].speed;
-        
-        // 隐藏开始界面
-        this.startScreen.style.display = 'none';
-        this.gameOverScreen.style.display = 'none';
-        
-        // 开始游戏循环
-        requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
-    }
-
-    resetGame() {
-        this.startGame();
-    }
-
-    gameLoop(timestamp) {
-        if (this.gameOver) {
-            this.showGameOver();
-            return;
-        }
-        
-        // 暂停检查
-        if (this.isPaused) {
-            requestAnimationFrame((t) => this.gameLoop(t));
-            return;
-        }
-        
-        // FPS计算
-        this.frameCount++;
-        if (timestamp - this.lastFpsUpdate >= 1000) {
-            this.fps = this.frameCount;
-            this.frameCount = 0;
-            this.lastFpsUpdate = timestamp;
-        }
-        
-        // 更新游戏状态
-        if (!this.lastTime) this.lastTime = timestamp;
-        const deltaTime = timestamp - this.lastTime;
-        
-        if (deltaTime >= this.game.getCurrentSpeed()) {
-            this.lastTime = timestamp;
-            
-            // 更新游戏逻辑
-            this.game.update();
-            
-            // 检查游戏结束
-            if (this.game.gameOver) {
-                this.gameOver = true;
-                this.achievements.checkGameEnd(this.game.score);
-                this.showGameOver();
-                return;
-            }
-        }
-        
-        // 渲染游戏
-        this.renderer.render({
-            snake: this.game.snake,
-            food: this.game.food,
-            bonusFood: this.game.bonusFood,
-            score: this.game.score,
-            highScore: this.game.highScore,
-            activeEffects: this.game.activeEffects
-        });
-        
-        // 继续循环
-        requestAnimationFrame((t) => this.gameLoop(t));
-    }
-
-    handleKeyDown(e) {
-        // 方向控制
-        switch(e.key) {
-            case 'ArrowUp':
-                if (this.game.direction !== 'down') this.game.nextDirection = 'up';
-                break;
-            case 'ArrowDown':
-                if (this.game.direction !== 'up') this.game.nextDirection = 'down';
-                break;
-            case 'ArrowLeft':
-                if (this.game.direction !== 'right') this.game.nextDirection = 'left';
-                break;
-            case 'ArrowRight':
-                if (this.game.direction !== 'left') this.game.nextDirection = 'right';
-                break;
-            case ' ':
-                this.isPaused = !this.isPaused;
-                break;
-        }
-    }
-
-    showGameOver() {
-        this.gameOverScreen.style.display = 'block';
-        document.getElementById('final-score').textContent = this.game.score;
-    }
-}
-
-// 启动游戏
-const game = new SnakeGame();
+    }).catch(error => {
+        console.error('Module loading failed:', error);
+        alert('游戏模块加载失败，请检查控制台日志');
+    });
+});

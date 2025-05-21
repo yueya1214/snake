@@ -58,6 +58,6 @@ export function showEffectMessage(message, color) {
     effectMsg.style.textShadow = '0 0 5px #000';
     effectMsg.style.animation = 'fadeOut 2s forwards';
     
-    document.getElementById('game-container').appendChild(effectMsg);
+    document.querySelector('.game-board-container').appendChild(effectMsg);
     setTimeout(() => effectMsg.remove(), 2000);
 }
