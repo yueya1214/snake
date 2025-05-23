@@ -24,7 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         startScreen: document.getElementById('start-screen'),
                         gameOverScreen: document.getElementById('game-over-screen'),
                         startButton: document.getElementById('start-button'),
-                        restartButton: document.getElementById('restart-button')
+                        restartButton: document.getElementById('restart-button'),
+                        scoreDisplay: document.getElementById('score'),
+                        highScoreDisplay: document.getElementById('high-score'),
+                        levelDisplay: document.getElementById('level')
                     };
                     
                     // 调试输出元素状态
@@ -56,6 +59,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.game = new GameCore();
                     this.renderer = new Renderer(this.canvas);
                     this.achievements = new AchievementSystem();
+                    
+                    // 初始化渲染器
+                    this.renderer.init();
+                    
+                    // 添加窗口大小变化监听
+                    window.addEventListener('resize', this.handleResize);
                     
                     // 简化点击事件
                     const handleStartClick = () => {
@@ -89,6 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.startButton.onclick = handleStartClick;
                     this.restartButton.onclick = handleRestartClick;
                     
+                    // 添加移动控制按钮事件
+                    this.setupMobileControls();
+                    
                     // 验证按钮是否存在
                     if (!(this.startButton instanceof HTMLElement)) {
                         console.error('Start button not found');
@@ -102,6 +114,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Game initialization failed:', error);
                     alert('游戏初始化失败，请检查控制台日志');
                 }
+            }
+            
+            handleResize = () => {
+                console.log('Window resized, adjusting game board');
+                this.renderer.init();
+                this.renderer.render({
+                    snake: this.game.snake,
+                    food: this.game.food,
+                    bonusFood: this.game.bonusFood,
+                    score: this.game.score,
+                    highScore: this.game.highScore,
+                    activeEffects: this.game.activeEffects
+                });
+            };
+            
+            setupMobileControls() {
+                const upBtn = document.getElementById('btn-up');
+                const downBtn = document.getElementById('btn-down');
+                const leftBtn = document.getElementById('btn-left');
+                const rightBtn = document.getElementById('btn-right');
+                
+                if (upBtn) upBtn.addEventListener('click', () => {
+                    if (this.game.direction !== 'down') this.game.nextDirection = 'up';
+                });
+                
+                if (downBtn) downBtn.addEventListener('click', () => {
+                    if (this.game.direction !== 'up') this.game.nextDirection = 'down';
+                });
+                
+                if (leftBtn) leftBtn.addEventListener('click', () => {
+                    if (this.game.direction !== 'right') this.game.nextDirection = 'left';
+                });
+                
+                if (rightBtn) rightBtn.addEventListener('click', () => {
+                    if (this.game.direction !== 'left') this.game.nextDirection = 'right';
+                });
             }
             
             startGame() {
@@ -126,6 +174,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // 添加键盘监听
                     document.addEventListener('keydown', this.handleKeyDown);
+                    
+                    // 更新分数显示
+                    if (this.scoreDisplay) this.scoreDisplay.textContent = '0';
+                    if (this.highScoreDisplay) this.highScoreDisplay.textContent = this.game.highScore.toString();
                     
                     // 开始游戏循环
                     this.gameLoop(performance.now());
@@ -207,6 +259,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (deltaTime >= this.game.getCurrentSpeed()) {
                     this.lastTime = timestamp;
                     this.game.update();
+                    
+                    // 更新分数显示
+                    if (this.scoreDisplay) this.scoreDisplay.textContent = this.game.score.toString();
+                    if (this.highScoreDisplay) this.highScoreDisplay.textContent = this.game.highScore.toString();
                     
                     if (this.game.gameOver) {
                         this.gameOver = true;

@@ -3,6 +3,8 @@ export const CONFIG = {
     // 游戏板设置
     BOARD_SIZE: 20,  // 游戏板格子数
     TILE_SIZE: 20,   // 每个格子像素大小
+    MIN_TILE_SIZE: 15, // 最小格子大小
+    MAX_TILE_SIZE: 30, // 最大格子大小
 
     // 游戏难度设置
     DIFFICULTY: {

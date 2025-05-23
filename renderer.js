@@ -8,11 +8,37 @@ export class Renderer {
         this.ctx = canvas.getContext('2d');
         this.currentSkin = 'default';
         this.theme = 'default';
+        this.tileSize = CONFIG.TILE_SIZE; // 实际使用的格子大小
     }
 
     init() {
-        this.canvas.width = CONFIG.BOARD_SIZE * CONFIG.TILE_SIZE;
-        this.canvas.height = CONFIG.BOARD_SIZE * CONFIG.TILE_SIZE;
+        // 获取容器尺寸
+        const container = this.canvas.parentElement;
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight || window.innerHeight * 0.6;
+        
+        // 计算适合的格子大小
+        const horizontalTiles = CONFIG.BOARD_SIZE;
+        const verticalTiles = CONFIG.BOARD_SIZE;
+        
+        const maxHorizontalTileSize = Math.floor(containerWidth / horizontalTiles);
+        const maxVerticalTileSize = Math.floor(containerHeight / verticalTiles);
+        
+        // 选择较小的尺寸以确保完全适应
+        this.tileSize = Math.min(
+            Math.max(Math.min(maxHorizontalTileSize, maxVerticalTileSize), CONFIG.MIN_TILE_SIZE),
+            CONFIG.MAX_TILE_SIZE
+        );
+        
+        // 设置画布尺寸
+        this.canvas.width = horizontalTiles * this.tileSize;
+        this.canvas.height = verticalTiles * this.tileSize;
+        
+        // 调整容器尺寸以匹配画布
+        container.style.width = `${this.canvas.width}px`;
+        container.style.height = `${this.canvas.height}px`;
+        
+        console.log(`Canvas size: ${this.canvas.width}x${this.canvas.height}, Tile size: ${this.tileSize}`);
     }
 
     render(gameState) {
@@ -57,14 +83,14 @@ export class Renderer {
         for (let i = 0; i <= CONFIG.BOARD_SIZE; i++) {
             // 垂直线
             this.ctx.beginPath();
-            this.ctx.moveTo(i * CONFIG.TILE_SIZE, 0);
-            this.ctx.lineTo(i * CONFIG.TILE_SIZE, this.canvas.height);
+            this.ctx.moveTo(i * this.tileSize, 0);
+            this.ctx.lineTo(i * this.tileSize, this.canvas.height);
             this.ctx.stroke();
             
             // 水平线
             this.ctx.beginPath();
-            this.ctx.moveTo(0, i * CONFIG.TILE_SIZE);
-            this.ctx.lineTo(this.canvas.width, i * CONFIG.TILE_SIZE);
+            this.ctx.moveTo(0, i * this.tileSize);
+            this.ctx.lineTo(this.canvas.width, i * this.tileSize);
             this.ctx.stroke();
         }
     }
@@ -107,9 +133,9 @@ export class Renderer {
     }
 
     drawSegment(x, y, color, isHead, isTail) {
-        const posX = x * CONFIG.TILE_SIZE;
-        const posY = y * CONFIG.TILE_SIZE;
-        const size = CONFIG.TILE_SIZE;
+        const posX = x * this.tileSize;
+        const posY = y * this.tileSize;
+        const size = this.tileSize;
         
         this.ctx.fillStyle = color;
         this.ctx.fillRect(posX, posY, size, size);
@@ -133,9 +159,9 @@ export class Renderer {
     }
 
     drawHaloEffect(x, y) {
-        const centerX = x * CONFIG.TILE_SIZE + CONFIG.TILE_SIZE/2;
-        const centerY = y * CONFIG.TILE_SIZE + CONFIG.TILE_SIZE/2;
-        const radius = CONFIG.TILE_SIZE * 0.7;
+        const centerX = x * this.tileSize + this.tileSize/2;
+        const centerY = y * this.tileSize + this.tileSize/2;
+        const radius = this.tileSize * 0.7;
         
         this.ctx.save();
         this.ctx.beginPath();
@@ -147,9 +173,9 @@ export class Renderer {
     }
 
     drawFood(food) {
-        const posX = food.x * CONFIG.TILE_SIZE;
-        const posY = food.y * CONFIG.TILE_SIZE;
-        const radius = CONFIG.TILE_SIZE / 2;
+        const posX = food.x * this.tileSize;
+        const posY = food.y * this.tileSize;
+        const radius = this.tileSize / 2;
         
         // 绘制食物基础形状
         this.ctx.fillStyle = CONFIG.FOOD_TYPES[food.type].color;
@@ -208,9 +234,9 @@ export class Renderer {
     }
 
     drawBonusFood(food) {
-        const posX = food.x * CONFIG.TILE_SIZE;
-        const posY = food.y * CONFIG.TILE_SIZE;
-        const radius = CONFIG.TILE_SIZE / 2;
+        const posX = food.x * this.tileSize;
+        const posY = food.y * this.tileSize;
+        const radius = this.tileSize / 2;
         
         // 绘制闪烁效果
         const blink = Math.sin(Date.now() / 200) > 0;
@@ -248,15 +274,15 @@ export class Renderer {
 
     drawObstacles(obstacles) {
         obstacles.forEach(obs => {
-            const posX = obs.x * CONFIG.TILE_SIZE;
-            const posY = obs.y * CONFIG.TILE_SIZE;
+            const posX = obs.x * this.tileSize;
+            const posY = obs.y * this.tileSize;
             
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            this.ctx.fillRect(posX, posY, CONFIG.TILE_SIZE, CONFIG.TILE_SIZE);
+            this.ctx.fillRect(posX, posY, this.tileSize, this.tileSize);
             
             this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
             this.ctx.lineWidth = 2;
-            this.ctx.strokeRect(posX, posY, CONFIG.TILE_SIZE, CONFIG.TILE_SIZE);
+            this.ctx.strokeRect(posX, posY, this.tileSize, this.tileSize);
         });
     }
 
